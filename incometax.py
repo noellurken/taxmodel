@@ -1,10 +1,11 @@
 import streamlit as st
+import plotly.graph_objects as go
 
 # --------------------------
 # Page Setup
 # --------------------------
 st.set_page_config(page_title="NL Net Income Calculator", layout="wide")
-st.title("🇳🇱 Netherlands Net Income Calculator – Full Box System")
+st.title("🇳🇱 Netherlands Net Income Calculator – Full Box System with Mortgage Deduction & Chart")
 
 # --------------------------
 # Inputs: Box 1
@@ -28,7 +29,7 @@ debts_box3 = st.number_input("Total debts (Box 3) (€)", min_value=0.0, step=
 tax_partner = st.checkbox("Do you have a tax‑partner (Box 3 allowance doubling)")
 
 # --------------------------
-# Tax Credit Functions (Box 1)
+# Tax Credit Functions
 # --------------------------
 def calculate_general_tax_credit(income):
     max_credit = 3070
@@ -49,21 +50,18 @@ def calculate_labour_tax_credit(income):
         return 0
 
 # --------------------------
-# Box 3 Progressive Rates (2025 simplified)
+# Box 3 Progressive Rates
 # --------------------------
 def calculate_box3_tax(assets, debts, partner=False):
     allowance = 57_684
     if partner:
         allowance *= 2
     taxable_assets = max(0, assets - debts - allowance)
-    # 2025 progressive rates (simplified assumed return)
-    # Up to €103k: 1.818%, €103k–€1,030k: 4.366%, above €1,030k: 5.53%
     tier1_limit = 103_000
     tier2_limit = 1_030_000
     tier1_rate = 0.01818
     tier2_rate = 0.04366
     tier3_rate = 0.0553
-    rate = 0
     if taxable_assets <= tier1_limit:
         assumed_return = taxable_assets * tier1_rate
     elif taxable_assets <= tier2_limit:
@@ -77,9 +75,8 @@ def calculate_box3_tax(assets, debts, partner=False):
 # Calculate Taxes
 # --------------------------
 if st.button("Calculate Net Income"):
-    # Box 1: taxable income after deductions
+    # Box 1
     taxable_box1 = max(0, gross_box1 - mortgage_interest)
-    # Progressive tax rates
     if taxable_box1 <= 38_441:
         rate1 = 0.3582
     elif taxable_box1 <= 76_817:
@@ -87,8 +84,6 @@ if st.button("Calculate Net Income"):
     else:
         rate1 = 0.4950
     tax1_before_credit = taxable_box1 * rate1
-
-    # Box 1 tax credits
     general_credit = calculate_general_tax_credit(taxable_box1)
     labour_credit = calculate_labour_tax_credit(taxable_box1)
     total_credit = general_credit + labour_credit
@@ -104,20 +99,35 @@ if st.button("Calculate Net Income"):
     # Box 3
     tax3 = calculate_box3_tax(assets_box3, debts_box3, tax_partner)
 
-    # Total net income (Box3 is wealth tax, not added to income)
-    total_tax = tax1_after_credit + tax2 + tax3
+    # Net income (Box3 is wealth tax)
     net_income = gross_box1 + income_box2 - (tax1_after_credit + tax2)
+    total_tax = tax1_after_credit + tax2 + tax3
+    effective_tax_rate = total_tax / (gross_box1 + income_box2) if (gross_box1 + income_box2) > 0 else 0
 
     # --------------------------
-    # Output
+    # Display Results
     # --------------------------
     st.write("---")
-    st.success(f"✅ Net Income (after tax on Box 1 & Box 2): €{net_income:,.2f}")
+    st.success(f"✅ Net Income (after Box 1 & Box 2 taxes): €{net_income:,.2f}")
     st.info("🧮 Tax Breakdown:")
-    st.write(f"Box 1 taxable income: €{taxable_box1:,.2f}")
-    st.write(f"Box 1 tax before credits: €{tax1_before_credit:,.2f}")
-    st.write(f"Total tax credits (Box 1): €{total_credit:,.2f}")
     st.write(f"Box 1 tax after credits: €{tax1_after_credit:,.2f}")
     st.write(f"Box 2 tax: €{tax2:,.2f}")
     st.write(f"Box 3 tax (on assets): €{tax3:,.2f}")
-    st.write(f"Total tax (including Box 3): €{total_tax:,.2f}")
+    st.write(f"Total taxes (including Box 3): €{total_tax:,.2f}")
+    st.write(f"Effective tax rate: {effective_tax_rate*100:.2f}%")
+
+    # --------------------------
+    # Interactive Chart
+    # --------------------------
+    fig = go.Figure(data=[
+        go.Bar(name="Box 1", x=["Taxes"], y=[tax1_after_credit], marker_color="indianred"),
+        go.Bar(name="Box 2", x=["Taxes"], y=[tax2], marker_color="lightsalmon"),
+        go.Bar(name="Box 3", x=["Taxes"], y=[tax3], marker_color="lightblue"),
+    ])
+    fig.update_layout(barmode='stack', title="Tax Contribution per Box", yaxis_title="€")
+    st.plotly_chart(fig, use_container_width=True)
+
+    # Pie chart for visual share
+    fig2 = go.Figure(data=[go.Pie(labels=["Box 1", "Box 2", "Box 3"], values=[tax1_after_credit, tax2, tax3], hole=0.4)])
+    fig2.update_layout(title="Share of Taxes by Box")
+    st.plotly_chart(fig2, use_container_width=True)
