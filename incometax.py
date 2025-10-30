@@ -17,5 +17,4 @@ if st.button("Calculate Net Income"):
     st.success(f"✅ Net Income: **€{net_income:,.2f}**")
     st.info(f"💸 Total Tax Paid: **€{tax_amount:,.2f}**")
 
-# Footer
-st.caption("Built with Streamlit 🧠")
+
