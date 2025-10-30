@@ -1,23 +1,30 @@
 # app.py
 import streamlit as st
 import pandas as pd
-from math import isclose
 
 # --------------------------
-# Functie voor EU-notatie getallen
+# Helper functions
 # --------------------------
 def euro(n):
+    """Format number as euro with Dutch thousands separator."""
     return f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
+def parse_euro_input(text):
+    """Parse Dutch-style number input to float."""
+    text = text.replace(".", "").replace(",", ".")
+    try:
+        return float(text)
+    except:
+        return 0.0
 
 # --------------------------
 # Parameters 2025
 # --------------------------
-HILLEN_PERCENT_2025 = 0.7667   # 76,67% Hillen aftrek-deel
-MAX_DEDUCTION_RATE_2025 = 0.3748  # max belastingvoordeel hypotheekrenteaftrek
-EWF_RATE_DEFAULT = 0.0035
+HILLEN_PERCENT_2025 = 0.7667
+MAX_DEDUCTION_RATE_2025 = 0.3748
 
 # --------------------------
-# Box 1 schijven (belasting+premies)
+# Box1 belasting
 # --------------------------
 def calc_box1_tax(ink):
     x = max(0.0, float(ink))
@@ -33,7 +40,7 @@ def calc_box1_tax(ink):
     return tax
 
 # --------------------------
-# Eigenwoningforfait tabel 2025
+# Eigenwoningforfait
 # --------------------------
 def calc_eigenwoningforfait(woz):
     w = max(0.0, woz)
@@ -52,12 +59,9 @@ def annual_interest_paid(principal, rate, years=30, mort_type="Annuiteit"):
     r = float(rate) / 100.0
     maanden = years * 12
     if P <= 0 or r <= 0: return 0.0
-
     if mort_type == "Aflossingsvrij":
         return P * r
-
     mr = r / 12.0
-
     if mort_type == "Lineair":
         maandelijks_aflossing = P / maanden
         schuld = P
@@ -67,7 +71,6 @@ def annual_interest_paid(principal, rate, years=30, mort_type="Annuiteit"):
             totaal += rente
             schuld -= maandelijks_aflossing
         return totaal
-
     # Annuiteit
     maandlast = mr * P / (1 - (1 + mr)**(-maanden))
     schuld = P
@@ -94,7 +97,7 @@ def arbeidskorting(ink):
     return 0.0
 
 # --------------------------
-# Box 3 belastingmodel 2025
+# Box3 belasting
 # --------------------------
 def box3_tax(a, d, partner):
     vrij = 57684 * (2 if partner else 1)
@@ -114,19 +117,19 @@ st.set_page_config(page_title="Belastingcalculator NL 2025", layout="wide")
 st.title("🇳🇱 Nederlandse Belasting- en Hypotheekcalculator (2025)")
 
 st.subheader("Inkomen en werk")
-bruto = st.number_input("Bruto jaarinkomen (Box 1) €", min_value=0.0, step=100.0, value=50000.0)
+bruto = parse_euro_input(st.text_input("Bruto jaarinkomen (Box 1) €", "50.000"))
 
 st.subheader("Eigen woning & hypotheek")
-woz = st.number_input("WOZ-waarde woning €", min_value=0.0, step=1000.0, value=400000.0)
-hp = st.number_input("Hypotheekschuld €", min_value=0.0, step=1000.0, value=300000.0)
-rente = st.number_input("Hypotheekrente (%)", min_value=0.0, max_value=20.0, step=0.01, value=4.00)
+woz = parse_euro_input(st.text_input("WOZ-waarde woning €", "400.000"))
+hp = parse_euro_input(st.text_input("Hypotheekschuld €", "300.000"))
+rente = parse_euro_input(st.text_input("Hypotheekrente (%)", "4,00"))
 htype = st.selectbox("Hypotheekvorm", ["Annuiteit", "Lineair", "Aflossingsvrij"])
-term = st.number_input("Resterende looptijd (jaren)", min_value=1, step=1, value=30)
+term = int(parse_euro_input(st.text_input("Resterende looptijd (jaren)", "30")))
 
 st.subheader("Andere boxen")
-box2 = st.number_input("Box 2-inkomen €", min_value=0.0, step=100.0, value=0.0)
-vermogen = st.number_input("Vermogen Box 3 €", min_value=0.0, step=100.0, value=100000.0)
-schulden = st.number_input("Schulden Box 3 €", min_value=0.0, step=100.0, value=20000.0)
+box2 = parse_euro_input(st.text_input("Box 2-inkomen €", "0"))
+vermogen = parse_euro_input(st.text_input("Vermogen Box 3 €", "100.000"))
+schulden = parse_euro_input(st.text_input("Schulden Box 3 €", "20.000"))
 partner = st.checkbox("Fiscaal partner")
 
 # --------------------------
@@ -137,7 +140,7 @@ if st.button("Bereken"):
     renteaftrek = annual_interest_paid(hp, rente, term, htype)
     verschil = ewf - renteaftrek
 
-    if verschil > 0:  # Hillen
+    if verschil > 0:
         netto_woning = verschil * (1 - HILLEN_PERCENT_2025)
         hillen_bedrag = verschil * HILLEN_PERCENT_2025
     else:
@@ -147,14 +150,8 @@ if st.button("Bereken"):
     belastbaar1 = max(0.0, bruto + netto_woning)
     belastbaar1_zonder = max(0.0, bruto + ewf)
 
-    tax_zonder = calc_box1_tax(belastbaar1_zonder)
-    tax_met = calc_box1_tax(belastbaar1)
-
-    cred_z = algemene_heffingskorting(belastbaar1_zonder) + arbeidskorting(belastbaar1_zonder)
-    cred_m = algemene_heffingskorting(belastbaar1) + arbeidskorting(belastbaar1)
-
-    tax_zonder -= cred_z
-    tax_met -= cred_m
+    tax_zonder = calc_box1_tax(belastbaar1_zonder) - (algemene_heffingskorting(belastbaar1_zonder) + arbeidskorting(belastbaar1_zonder))
+    tax_met = calc_box1_tax(belastbaar1) - (algemene_heffingskorting(belastbaar1) + arbeidskorting(belastbaar1))
 
     voordeel_raw = tax_zonder - tax_met
     max_voordeel = renteaftrek * MAX_DEDUCTION_RATE_2025
@@ -168,7 +165,6 @@ if st.button("Bereken"):
         tax_box1 = tax_met
         cap = False
 
-    # Box 2 en 3
     tax2 = box2 * (0.245 if box2 <= 67804 else 0.31)
     tax3 = box3_tax(vermogen, schulden, partner)
 
@@ -189,7 +185,6 @@ if st.button("Bereken"):
 
     st.write(f"Belastbaar inkomen Box 1: **€{euro(belastbaar1)}**")
     st.write(f"Belasting Box 1: **€{euro(tax_box1)}**")
-
     st.write(f"Belasting Box 2: **€{euro(tax2)}**")
     st.write(f"Belasting Box 3: **€{euro(tax3)}**")
 
