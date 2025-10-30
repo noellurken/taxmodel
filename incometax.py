@@ -85,16 +85,25 @@ def annual_interest_paid(principal, rate, years=30, mort_type="Annuiteit"):
 # --------------------------
 # Heffingskortingen
 # --------------------------
-def algemene_heffingskorting(ink):
-    maxc = 3070.0
-    if ink <= 73000: return maxc
-    return max(0.0, maxc - 0.056 * (ink - 73000))
+def algemene_heffingskorting(inkomen):
+    if inkomen <= 28406.0:
+        return 3068.0
+    elif inkomen <= 76817.0:
+        return 3068.0 - 0.06337 * (inkomen - 28406.0)
+    else:
+        return 0.0
 
-def arbeidskorting(ink):
-    if ink <= 11000: return 0.0
-    if ink <= 36000: return 1000 + 0.215 * (ink - 11000)
-    if ink <= 112000: return max(0, 5000 - 0.061 * (ink - 36000))
-    return 0.0
+def arbeidskorting(inkomen):
+    if inkomen <= 12_169:
+        return 0.08053 * inkomen
+    elif inkomen <= 26_288:
+        return 980.0 + 0.30030 * (inkomen - 12_169.0)
+    elif inkomen <= 43_071:
+        return 5_220.0 + 0.02258 * (inkomen - 26_288.0)
+    elif inkomen <= 129_078:
+        return max(0.0, 5_599.0 - 0.06510 * (inkomen - 43_071.0))
+    else:
+        return 0.0
 
 # --------------------------
 # Box3 belasting
