@@ -1,11 +1,11 @@
 import streamlit as st
-import plotly.graph_objects as go
+import pandas as pd
 
 # --------------------------
 # Page Setup
 # --------------------------
 st.set_page_config(page_title="NL Net Income Calculator", layout="wide")
-st.title("🇳🇱 Netherlands Net Income Calculator – Full Box System with Mortgage Deduction & Chart")
+st.title("🇳🇱 Netherlands Net Income Calculator – Full Box System with Mortgage Deduction")
 
 # --------------------------
 # Inputs: Box 1
@@ -117,17 +117,22 @@ if st.button("Calculate Net Income"):
     st.write(f"Effective tax rate: {effective_tax_rate*100:.2f}%")
 
     # --------------------------
-    # Interactive Chart
+    # Bar Chart (Streamlit native)
     # --------------------------
-    fig = go.Figure(data=[
-        go.Bar(name="Box 1", x=["Taxes"], y=[tax1_after_credit], marker_color="indianred"),
-        go.Bar(name="Box 2", x=["Taxes"], y=[tax2], marker_color="lightsalmon"),
-        go.Bar(name="Box 3", x=["Taxes"], y=[tax3], marker_color="lightblue"),
-    ])
-    fig.update_layout(barmode='stack', title="Tax Contribution per Box", yaxis_title="€")
-    st.plotly_chart(fig, use_container_width=True)
+    data = pd.DataFrame({
+        'Box': ['Box 1', 'Box 2', 'Box 3'],
+        'Tax (€)': [tax1_after_credit, tax2, tax3]
+    })
+    st.subheader("Tax Contribution per Box")
+    st.bar_chart(data.set_index('Box'))
 
-    # Pie chart for visual share
-    fig2 = go.Figure(data=[go.Pie(labels=["Box 1", "Box 2", "Box 3"], values=[tax1_after_credit, tax2, tax3], hole=0.4)])
-    fig2.update_layout(title="Share of Taxes by Box")
-    st.plotly_chart(fig2, use_container_width=True)
+    # --------------------------
+    # Pie Chart (Streamlit native via matplotlib)
+    # --------------------------
+    import matplotlib.pyplot as plt
+
+    st.subheader("Share of Taxes by Box")
+    fig, ax = plt.subplots()
+    ax.pie([tax1_after_credit, tax2, tax3], labels=['Box 1', 'Box 2', 'Box 3'], autopct='%1.1f%%', colors=['indianred','lightsalmon','lightblue'])
+    ax.axis('equal')
+    st.pyplot(fig)
