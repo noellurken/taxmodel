@@ -136,7 +136,7 @@ def auto_format(key):
 # --------------------------
 # UI
 # --------------------------
-st.set_page_config(page_title="Belastingcalculator 2025", layout="narrow")
+st.set_page_config(page_title="Belastingcalculator 2025", layout="centered")
 st.title("Belastingcalculator 2025")
 
 st.subheader("Inkomen en werk")
