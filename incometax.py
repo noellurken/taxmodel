@@ -1,6 +1,5 @@
 import streamlit as st
 import pandas as pd
-import matplotlib.pyplot as plt
 
 # --------------------------
 # Page Setup
@@ -17,16 +16,12 @@ gross_box1 = st.number_input("Gross income (Box 1) (€)", min_value=0.0, step
 # --------------------------
 # Inputs: Mortgage Details
 # --------------------------
-st.subheader("Mortgage Details (Automatic Deduction Calculation)")
+st.subheader("Mortgage Details")
 mortgage_amount = st.number_input("Mortgage principal (€)", min_value=0.0, step=1000.0, value=300_000)
 annual_interest_rate = st.number_input("Mortgage interest rate (%)", min_value=0.0, max_value=10.0, step=0.1, value=4.0)
 mortgage_type = st.selectbox("Mortgage type", ["Annuity", "Linear", "Interest-only"])
 
 def calculate_mortgage_deduction(principal, interest_rate, mortgage_type):
-    """
-    Calculate mortgage interest deduction based on principal, interest rate, and mortgage type.
-    Simplified: full annual interest is deductible. Actual tax effect handled via Box 1 rates.
-    """
     annual_interest = principal * (interest_rate / 100)
     return annual_interest
 
@@ -55,8 +50,7 @@ def calculate_general_tax_credit(income):
     if income <= 73_000:
         return max_credit
     else:
-        credit = max(0, max_credit - 0.056 * (income - 73_000))
-        return credit
+        return max(0, max_credit - 0.056 * (income - 73_000))
 
 def calculate_labour_tax_credit(income):
     if income <= 11_000:
@@ -94,7 +88,7 @@ def calculate_box3_tax(assets, debts, partner=False):
 # Calculate Taxes
 # --------------------------
 if st.button("Calculate Net Income"):
-    # Box 1: taxable income after automatic mortgage deduction
+    # Box 1
     taxable_box1 = max(0, gross_box1 - mortgage_interest)
     if taxable_box1 <= 38_441:
         rate1 = 0.3582
@@ -103,8 +97,6 @@ if st.button("Calculate Net Income"):
     else:
         rate1 = 0.4950
     tax1_before_credit = taxable_box1 * rate1
-
-    # Box 1 credits
     general_credit = calculate_general_tax_credit(taxable_box1)
     labour_credit = calculate_labour_tax_credit(taxable_box1)
     total_credit = general_credit + labour_credit
@@ -120,7 +112,7 @@ if st.button("Calculate Net Income"):
     # Box 3
     tax3 = calculate_box3_tax(assets_box3, debts_box3, tax_partner)
 
-    # Net income (Box3 is wealth tax, not included in cash income)
+    # Net income (Box3 is wealth tax)
     net_income = gross_box1 + income_box2 - (tax1_after_credit + tax2)
     total_tax = tax1_after_credit + tax2 + tax3
     effective_tax_rate = total_tax / (gross_box1 + income_box2) if (gross_box1 + income_box2) > 0 else 0
@@ -132,10 +124,26 @@ if st.button("Calculate Net Income"):
     st.success(f"✅ Net Income (after Box 1 & Box 2 taxes): €{net_income:,.2f}")
     st.info("🧮 Tax Breakdown:")
     st.write(f"Box 1 taxable income: €{taxable_box1:,.2f}")
-    st.write(f"Box 1 tax before credits: €{tax1_before_credit:,.2f}")
-    st.write(f"Total Box 1 credits (general + labour): €{total_credit:,.2f}")
     st.write(f"Box 1 tax after credits: €{tax1_after_credit:,.2f}")
     st.write(f"Box 2 tax: €{tax2:,.2f}")
     st.write(f"Box 3 tax (on assets): €{tax3:,.2f}")
     st.write(f"Total taxes (including Box 3): €{total_tax:,.2f}")
-    st.wr
+    st.write(f"Effective tax rate: {effective_tax_rate*100:.2f}%")
+
+    # --------------------------
+    # Bar Chart (Streamlit native)
+    # --------------------------
+    st.subheader("Tax Contribution per Box (Bar Chart)")
+    data = pd.DataFrame({
+        'Box': ['Box 1', 'Box 2', 'Box 3'],
+        'Tax (€)': [tax1_after_credit, tax2, tax3]
+    })
+    st.bar_chart(data.set_index('Box'))
+
+    # --------------------------
+    # Pie-like horizontal stacked bar using native chart
+    # --------------------------
+    st.subheader("Share of Taxes by Box (Stacked Bar)")
+    percentages = [tax1_after_credit, tax2, tax3]
+    df = pd.DataFrame([percentages], columns=['Box 1', 'Box 2', 'Box 3'])
+    st.bar_chart(df)
