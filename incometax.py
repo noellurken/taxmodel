@@ -5,12 +5,12 @@ import pandas as pd
 # --------------------------
 # Helper functions
 # --------------------------
-def euro(n):
-    """Format number as euro with Dutch thousands separator."""
+def euro_format(n):
+    """Format float as Dutch euro: 50.000,00"""
     return f"{n:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(text):
-    """Parse Dutch-style number input to float."""
+    """Parse Dutch-style euro input to float."""
     text = text.replace(".", "").replace(",", ".")
     try:
         return float(text)
@@ -111,25 +111,63 @@ def box3_tax(a, d, partner):
     return rendement * 0.36
 
 # --------------------------
+# Initialize session state for formatted inputs
+# --------------------------
+inputs = {
+    "bruto": "50.000,00",
+    "woz": "400.000,00",
+    "hp": "300.000,00",
+    "rente": "4,00",
+    "term": "30",
+    "box2": "0",
+    "vermogen": "100.000",
+    "schulden": "20.000"
+}
+
+for key in inputs:
+    if key not in st.session_state:
+        st.session_state[key] = inputs[key]
+
+# Helper for auto-formatting
+def auto_format(key):
+    val = parse_euro_input(st.session_state[key])
+    st.session_state[key] = euro_format(val)
+
+# --------------------------
 # UI
 # --------------------------
 st.set_page_config(page_title="Belastingcalculator NL 2025", layout="wide")
 st.title("🇳🇱 Nederlandse Belasting- en Hypotheekcalculator (2025)")
 
 st.subheader("Inkomen en werk")
-bruto = parse_euro_input(st.text_input("Bruto jaarinkomen (Box 1) €", "50.000"))
+st.text_input("Bruto jaarinkomen (Box 1) €", key="bruto", on_change=auto_format, args=("bruto",))
+bruto = parse_euro_input(st.session_state.bruto)
 
 st.subheader("Eigen woning & hypotheek")
-woz = parse_euro_input(st.text_input("WOZ-waarde woning €", "400.000"))
-hp = parse_euro_input(st.text_input("Hypotheekschuld €", "300.000"))
-rente = parse_euro_input(st.text_input("Hypotheekrente (%)", "4,00"))
+st.text_input("WOZ-waarde woning €", key="woz", on_change=auto_format, args=("woz",))
+woz = parse_euro_input(st.session_state.woz)
+
+st.text_input("Hypotheekschuld €", key="hp", on_change=auto_format, args=("hp",))
+hp = parse_euro_input(st.session_state.hp)
+
+st.text_input("Hypotheekrente (%)", key="rente", on_change=auto_format, args=("rente",))
+rente = parse_euro_input(st.session_state.rente)
+
 htype = st.selectbox("Hypotheekvorm", ["Annuiteit", "Lineair", "Aflossingsvrij"])
-term = int(parse_euro_input(st.text_input("Resterende looptijd (jaren)", "30")))
+
+st.text_input("Resterende looptijd (jaren)", key="term", on_change=auto_format, args=("term",))
+term = int(parse_euro_input(st.session_state.term))
 
 st.subheader("Andere boxen")
-box2 = parse_euro_input(st.text_input("Box 2-inkomen €", "0"))
-vermogen = parse_euro_input(st.text_input("Vermogen Box 3 €", "100.000"))
-schulden = parse_euro_input(st.text_input("Schulden Box 3 €", "20.000"))
+st.text_input("Box 2-inkomen €", key="box2", on_change=auto_format, args=("box2",))
+box2 = parse_euro_input(st.session_state.box2)
+
+st.text_input("Vermogen Box 3 €", key="vermogen", on_change=auto_format, args=("vermogen",))
+vermogen = parse_euro_input(st.session_state.vermogen)
+
+st.text_input("Schulden Box 3 €", key="schulden", on_change=auto_format, args=("schulden",))
+schulden = parse_euro_input(st.session_state.schulden)
+
 partner = st.checkbox("Fiscaal partner")
 
 # --------------------------
@@ -176,27 +214,23 @@ if st.button("Bereken"):
     # Output
     # --------------------------
     st.header("Resultaten")
-    st.write(f"Eigenwoningforfait: **€{euro(ewf)}**")
-    st.write(f"Betaalde hypotheekrente (1e jaar): **€{euro(renteaftrek)}**")
-
+    st.write(f"Eigenwoningforfait: **€{euro_format(ewf)}**")
+    st.write(f"Betaalde hypotheekrente (1e jaar): **€{euro_format(renteaftrek)}**")
     if verschil > 0:
-        st.write(f"🏠 Hillenregeling actief — beschermd deel: **€{euro(hillen_bedrag)}**")
-    st.write(f"Netto bijtelling/aftrek woning: **€{euro(netto_woning)}**")
-
-    st.write(f"Belastbaar inkomen Box 1: **€{euro(belastbaar1)}**")
-    st.write(f"Belasting Box 1: **€{euro(tax_box1)}**")
-    st.write(f"Belasting Box 2: **€{euro(tax2)}**")
-    st.write(f"Belasting Box 3: **€{euro(tax3)}**")
-
+        st.write(f"🏠 Hillenregeling actief — beschermd deel: **€{euro_format(hillen_bedrag)}**")
+    st.write(f"Netto bijtelling/aftrek woning: **€{euro_format(netto_woning)}**")
+    st.write(f"Belastbaar inkomen Box 1: **€{euro_format(belastbaar1)}**")
+    st.write(f"Belasting Box 1: **€{euro_format(tax_box1)}**")
+    st.write(f"Belasting Box 2: **€{euro_format(tax2)}**")
+    st.write(f"Belasting Box 3: **€{euro_format(tax3)}**")
     st.subheader("Hypotheekaftrek voordeel")
-    st.write(f"Ruw voordeel: **€{euro(voordeel_raw)}**")
-    st.write(f"Maximaal toegestaan (tariefaanpassing): **€{euro(max_voordeel)}**")
+    st.write(f"Ruw voordeel: **€{euro_format(voordeel_raw)}**")
+    st.write(f"Maximaal toegestaan: **€{euro_format(max_voordeel)}**")
     st.write(f"Cap toegepast: **{'Ja' if cap else 'Nee'}**")
-    st.write(f"Definitief voordeel: **€{euro(voordeel)}**")
-
+    st.write(f"Definitief voordeel: **€{euro_format(voordeel)}**")
     st.subheader("Netto resultaat")
-    st.write(f"Totale belasting: **€{euro(totaal_bel)}**")
-    st.write(f"Netto inkomen (Box1+Box2): **€{euro(netto)}**")
+    st.write(f"Totale belasting: **€{euro_format(totaal_bel)}**")
+    st.write(f"Netto inkomen (Box1+Box2): **€{euro_format(netto)}**")
     st.write(f"Effectieve belastingdruk: **{eff*100:.2f}%**")
 
     # Charts
@@ -206,9 +240,3 @@ if st.button("Bereken"):
         "Belasting (€)": [tax_box1, tax2, tax3]
     }).set_index("Box")
     st.bar_chart(df)
-
-    st.write("### Proportionele verdeling")
-    df2 = pd.DataFrame([[tax_box1, tax2, tax3]], columns=["Box 1", "Box 2", "Box 3"])
-    st.bar_chart(df2)
-
-    st.caption("Model gebaseerd op Nederlandse regels 2025. Indicatief, geen fiscaal advies.")
