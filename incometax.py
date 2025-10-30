@@ -31,8 +31,8 @@ def calc_box1_tax(ink):
     b1, b2 = 38441.0, 76817.0
     tax = 0.0
     if x <= b1:
-        return x * 0.1792
-    tax += b1 * 0.1792
+        return x * 0,3582
+    tax += b1 * 0,3582
     if x <= b2:
         return tax + (x - b1) * 0.3748
     tax += (b2 - b1) * 0.3748
