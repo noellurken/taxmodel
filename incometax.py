@@ -137,14 +137,14 @@ def auto_format(key):
 # UI
 # --------------------------
 st.set_page_config(page_title="Belastingcalculator NL 2025", layout="wide")
-st.title("🇳🇱 Nederlandse Belasting- en Hypotheekcalculator (2025)")
+st.title("Belastingcalculator 2025")
 
 st.subheader("Inkomen en werk")
-st.text_input("Bruto jaarinkomen (Box 1) €", key="bruto", on_change=auto_format, args=("bruto",))
+st.text_input("Brutojaarinkomen (Box 1) €", key="bruto", on_change=auto_format, args=("bruto",))
 bruto = parse_euro_input(st.session_state.bruto)
 
 st.subheader("Eigen woning & hypotheek")
-st.text_input("WOZ-waarde woning €", key="woz", on_change=auto_format, args=("woz",))
+st.text_input("WOZ-waarde eigen woning €", key="woz", on_change=auto_format, args=("woz",))
 woz = parse_euro_input(st.session_state.woz)
 
 st.text_input("Hypotheekschuld €", key="hp", on_change=auto_format, args=("hp",))
@@ -158,7 +158,7 @@ htype = st.selectbox("Hypotheekvorm", ["Annuiteit", "Lineair", "Aflossingsvrij"]
 st.text_input("Resterende looptijd (jaren)", key="term", on_change=auto_format, args=("term",))
 term = int(parse_euro_input(st.session_state.term))
 
-st.subheader("Andere boxen")
+st.subheader("Box 2 en box 3")
 st.text_input("Box 2-inkomen €", key="box2", on_change=auto_format, args=("box2",))
 box2 = parse_euro_input(st.session_state.box2)
 
