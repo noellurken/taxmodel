@@ -7,11 +7,9 @@ st.title("💶 Nederlandse Netto-Inkomen Calculator 2025")
 # Formatter / parser
 # -----------------------------
 def fmt_euro(val):
-    """Formatteer float naar string met punten voor duizendtallen en komma voor decimalen"""
     return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(s):
-    """Parse string naar float, kan punten en komma's bevatten"""
     s = s.replace(".", "").replace(",", ".")
     try:
         return float(s)
@@ -101,7 +99,7 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
     }
 
 # -----------------------------
-# Box2
+# Box 2
 # -----------------------------
 def bereken_box2(ink):
     grens = 67804.0
@@ -115,7 +113,7 @@ def bereken_box2(ink):
     return {"Inkomen": round(ink,2), "Belasting": round(belasting,2), "Netto": round(netto,2)}
 
 # -----------------------------
-# Box3
+# Box 3
 # -----------------------------
 def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     belastbaar = max(0,(spaar+beleg-schuld)-vrijstelling)
@@ -135,7 +133,7 @@ def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     }
 
 # -----------------------------
-# Session State Initialisatie
+# Session State Init
 # -----------------------------
 for key in ["jij_ink","partner_ink","maandloon_raw","maandloon_float","partner_checkbox","aow_jij","aow_partner"]:
     if key not in st.session_state:
@@ -173,35 +171,41 @@ col1, col2 = st.columns(2)
 with col1:
     st.subheader("Jij")
     st.write("Bruto jaarinkomen:", fmt_euro(st.session_state.get('jij_ink',0)))
-    woz = st.number_input("WOZ-waarde eigen woning (€)", value=0.0)
-    hypotheek = st.number_input("Renteaftrek (€)", value=0.0)
-    box1 = bereken_box1(st.session_state.get('jij_ink',0), st.session_state.aow_jij, eigenwoningforfait(woz), hypotheek)
-    st.write({k: fmt_euro(v) for k,v in box1.items()})
+    woz = st.text_input("WOZ-waarde eigen woning (€)", "0,00")
+    hypotheek = st.text_input("Renteaftrek (€)", "0,00")
+    box1 = bereken_box1(st.session_state.get('jij_ink',0), st.session_state.aow_jij, eigenwoningforfait(parse_euro_input(woz)), parse_euro_input(hypotheek))
+    with st.expander("Details Box 1"):
+        st.write({k: fmt_euro(v) for k,v in box1.items()})
 
-    spaar = st.number_input("Spaargeld (€)", value=0.0)
-    beleg = st.number_input("Beleggingen (€)", value=0.0)
-    schuld = st.number_input("Schulden (€)", value=0.0)
-    box3 = bereken_box3(spaar, beleg, schuld)
-    st.write({k: fmt_euro(v) for k,v in box3.items()})
+    spaar = st.text_input("Spaargeld (€)", "0,00")
+    beleg = st.text_input("Beleggingen (€)", "0,00")
+    schuld = st.text_input("Schulden (€)", "0,00")
+    box3 = bereken_box3(parse_euro_input(spaar), parse_euro_input(beleg), parse_euro_input(schuld))
+    with st.expander("Details Box 3"):
+        st.write({k: fmt_euro(v) for k,v in box3.items()})
 
     box2 = bereken_box2(st.session_state.get('jij_ink',0))
-    st.write({k: fmt_euro(v) for k,v in box2.items()})
+    with st.expander("Details Box 2"):
+        st.write({k: fmt_euro(v) for k,v in box2.items()})
 
 with col2:
     st.subheader("Partner")
     st.checkbox("Partner aanwezig?", key="partner_checkbox")
     if st.session_state.partner_checkbox:
         st.write("Bruto jaarinkomen:", fmt_euro(st.session_state.get('partner_ink',0)))
-        woz_p = st.number_input("WOZ-waarde partner (€)", value=0.0)
-        hypotheek_p = st.number_input("Renteaftrek partner (€)", value=0.0)
-        box1_p = bereken_box1(st.session_state.get('partner_ink',0), st.session_state.aow_partner, eigenwoningforfait(woz_p), hypotheek_p)
-        st.write({k: fmt_euro(v) for k,v in box1_p.items()})
+        woz_p = st.text_input("WOZ-waarde partner (€)", "0,00")
+        hypotheek_p = st.text_input("Renteaftrek partner (€)", "0,00")
+        box1_p = bereken_box1(st.session_state.get('partner_ink',0), st.session_state.aow_partner, eigenwoningforfait(parse_euro_input(woz_p)), parse_euro_input(hypotheek_p))
+        with st.expander("Details Box 1 Partner"):
+            st.write({k: fmt_euro(v) for k,v in box1_p.items()})
 
-        spaar_p = st.number_input("Spaargeld partner (€)", value=0.0)
-        beleg_p = st.number_input("Beleggingen partner (€)", value=0.0)
-        schuld_p = st.number_input("Schulden partner (€)", value=0.0)
-        box3_p = bereken_box3(spaar_p, beleg_p, schuld_p)
-        st.write({k: fmt_euro(v) for k,v in box3_p.items()})
+        spaar_p = st.text_input("Spaargeld partner (€)", "0,00")
+        beleg_p = st.text_input("Beleggingen partner (€)", "0,00")
+        schuld_p = st.text_input("Schulden partner (€)", "0,00")
+        box3_p = bereken_box3(parse_euro_input(spaar_p), parse_euro_input(beleg_p), parse_euro_input(schuld_p))
+        with st.expander("Details Box 3 Partner"):
+            st.write({k: fmt_euro(v) for k,v in box3_p.items()})
 
         box2_p = bereken_box2(st.session_state.get('partner_ink',0))
-        st.write({k: fmt_euro(v) for k,v in box2_p.items()})
+        with st.expander("Details Box 2 Partner"):
+            st.write({k: fmt_euro(v) for k,v in box2_p.items()})
