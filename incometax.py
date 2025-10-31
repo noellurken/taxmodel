@@ -1,16 +1,17 @@
 import streamlit as st
-import pandas as pd
 
 st.set_page_config(page_title="NL Netto Inkomen Calculator 2025", layout="wide")
 st.title("💶 Nederlandse Netto-Inkomen Calculator 2025")
 
 # -----------------------------
-# Formatter / Parser
+# Formatter / parser
 # -----------------------------
 def fmt_euro(val):
+    """Formatteer float naar string met punten voor duizendtallen en komma voor decimalen"""
     return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(s):
+    """Parse string naar float, kan punten en komma's bevatten"""
     s = s.replace(".", "").replace(",", ".")
     try:
         return float(s)
@@ -18,9 +19,9 @@ def parse_euro_input(s):
         return 0.0
 
 # -----------------------------
-# Heffingskortingen en Box1
+# Heffingskortingen
 # -----------------------------
-def algemene_heffingskorting_2025(ink, aow):
+def algemene_heffingskorting_2025(inkomen, aow):
     grens = 28406
     if not aow:
         max_k = 3068
@@ -30,23 +31,26 @@ def algemene_heffingskorting_2025(ink, aow):
         max_k = 1536
         afbouw = 0.03170
         nul_bij = 76817
-    if ink <= grens:
+    if inkomen <= grens:
         return max_k
-    elif ink >= nul_bij:
+    elif inkomen >= nul_bij:
         return 0
     else:
-        return max(0, max_k - afbouw * (ink - grens))
+        return max(0, max_k - afbouw * (inkomen - grens))
 
-def arbeidskorting_2025(ink):
-    if ink <= 11294:
-        return 0.086 * ink
-    elif ink <= 39422:
-        return 971 + 0.31707 * (ink - 11294)
-    elif ink <= 124283:
-        return 4319 - 0.06455 * (ink - 39422)
+def arbeidskorting_2025(arbeidsinkomen):
+    if arbeidsinkomen <= 11294:
+        return 0.086 * arbeidsinkomen
+    elif arbeidsinkomen <= 39422:
+        return 971 + 0.31707 * (arbeidsinkomen - 11294)
+    elif arbeidsinkomen <= 124283:
+        return 4319 - 0.06455 * (arbeidsinkomen - 39422)
     else:
         return 0
 
+# -----------------------------
+# Eigenwoningforfait
+# -----------------------------
 def eigenwoningforfait(woz):
     w = max(0.0, float(woz))
     if w <= 12500:
@@ -64,6 +68,9 @@ def eigenwoningforfait(woz):
         extra = (w - 1330000) * 0.0235
         return base + extra
 
+# -----------------------------
+# Box 1
+# -----------------------------
 def bereken_box1(ink, aow, ewf, renteaftrek):
     belastbaar = max(0, ink + ewf - renteaftrek)
     if aow:
@@ -93,7 +100,9 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
         "Netto": round(netto,2)
     }
 
+# -----------------------------
 # Box2
+# -----------------------------
 def bereken_box2(ink):
     grens = 67804.0
     laag = 0.245
@@ -105,15 +114,17 @@ def bereken_box2(ink):
     netto = ink - belasting
     return {"Inkomen": round(ink,2), "Belasting": round(belasting,2), "Netto": round(netto,2)}
 
+# -----------------------------
 # Box3
+# -----------------------------
 def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
-    belastbaar = max(0,(spaar + beleg - schuld)-vrijstelling)
-    rend_spaar = spaar * 0.0144
-    rend_beleg = beleg * 0.0588
-    rend_schuld = schuld * 0.0262
-    totaal = max(0,rend_spaar + rend_beleg - rend_schuld)
+    belastbaar = max(0,(spaar+beleg-schuld)-vrijstelling)
+    rend_spaar = spaar*0.0144
+    rend_beleg = beleg*0.0588
+    rend_schuld = schuld*0.0262
+    totaal = max(0,rend_spaar+rend_beleg-rend_schuld)
     belasting = totaal*0.36
-    netto = spaar + beleg - schuld - belasting
+    netto = spaar+beleg-schuld - belasting
     return {
         "Vermogen": round(spaar+beleg-schuld,2),
         "Belasting spaargeld": round(rend_spaar*0.36,2),
@@ -124,7 +135,7 @@ def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     }
 
 # -----------------------------
-# Session State
+# Session State Initialisatie
 # -----------------------------
 for key in ["jij_ink","partner_ink","maandloon_raw","maandloon_float","partner_checkbox","aow_jij","aow_partner"]:
     if key not in st.session_state:
@@ -167,11 +178,14 @@ with col1:
     box1 = bereken_box1(st.session_state.get('jij_ink',0), st.session_state.aow_jij, eigenwoningforfait(woz), hypotheek)
     st.write({k: fmt_euro(v) for k,v in box1.items()})
 
-    st.number_input("Spaargeld (€)", value=0.0)
-    st.number_input("Beleggingen (€)", value=0.0)
-    st.number_input("Schulden (€)", value=0.0)
-    box3 = bereken_box3(0,0,0)
+    spaar = st.number_input("Spaargeld (€)", value=0.0)
+    beleg = st.number_input("Beleggingen (€)", value=0.0)
+    schuld = st.number_input("Schulden (€)", value=0.0)
+    box3 = bereken_box3(spaar, beleg, schuld)
     st.write({k: fmt_euro(v) for k,v in box3.items()})
+
+    box2 = bereken_box2(st.session_state.get('jij_ink',0))
+    st.write({k: fmt_euro(v) for k,v in box2.items()})
 
 with col2:
     st.subheader("Partner")
@@ -183,8 +197,11 @@ with col2:
         box1_p = bereken_box1(st.session_state.get('partner_ink',0), st.session_state.aow_partner, eigenwoningforfait(woz_p), hypotheek_p)
         st.write({k: fmt_euro(v) for k,v in box1_p.items()})
 
-        st.number_input("Spaargeld partner (€)", value=0.0)
-        st.number_input("Beleggingen partner (€)", value=0.0)
-        st.number_input("Schulden partner (€)", value=0.0)
-        box3_p = bereken_box3(0,0,0)
+        spaar_p = st.number_input("Spaargeld partner (€)", value=0.0)
+        beleg_p = st.number_input("Beleggingen partner (€)", value=0.0)
+        schuld_p = st.number_input("Schulden partner (€)", value=0.0)
+        box3_p = bereken_box3(spaar_p, beleg_p, schuld_p)
         st.write({k: fmt_euro(v) for k,v in box3_p.items()})
+
+        box2_p = bereken_box2(st.session_state.get('partner_ink',0))
+        st.write({k: fmt_euro(v) for k,v in box2_p.items()})
