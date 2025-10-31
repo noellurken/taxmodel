@@ -98,15 +98,21 @@ left, right = st.columns([2,1])
 # -----------------------------
 with right:
     st.markdown("### 🧮 Salarisrekenhulp")
-    gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
-    
-    # Initialiseer session_state
-    if "maandloon_display" not in st.session_state:
+
+    # Callback om de rekenhulp te resetten bij wisselen
+    def reset_rekenhulp():
         st.session_state["maandloon_display"] = "0,00"
-    if "dertiemaand_checkbox" not in st.session_state:
         st.session_state["dertiemaand_checkbox"] = False
-    if "vakantiegeld_pct" not in st.session_state:
         st.session_state["vakantiegeld_pct"] = 8.0
+
+    if "gebruiker_radio" not in st.session_state:
+        st.session_state["gebruiker_radio"] = "Jij"
+    gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"], key="gebruiker_radio", on_change=reset_rekenhulp)
+
+    # Initialiseer session_state
+    for key in ["maandloon_display", "dertiemaand_checkbox", "vakantiegeld_pct"]:
+        if key not in st.session_state:
+            st.session_state[key] = "0,00" if "maandloon" in key else (False if "dertiemaand" in key else 8.0)
 
     # Callback voor directe formattering
     def format_salaris_input():
@@ -168,8 +174,8 @@ with left:
     jij_aow = st.checkbox("AOW-gerechtigd?")
 
     st.divider()
-    partner = st.checkbox("Ik heb een fiscale partner")
-    if partner:
+    partner_checkbox = st.checkbox("Ik heb een fiscale partner")
+    if partner_checkbox:
         st.markdown("### 👥 Partner")
         partner_ink_input = st.text_input(
             "Bruto Box-1 inkomen partner (€)",
@@ -179,6 +185,9 @@ with left:
         partner_ink = parse_euro_input(partner_ink_input)
         partner_aow = st.checkbox("Partner AOW-gerechtigd?")
     else:
+        # Reset partnerinkomen als geen partner
+        st.session_state["partner_ink"] = 0.0
+        st.session_state["partner_ink_input"] = "0,00"
         partner_ink = 0.0
         partner_aow = False
 
@@ -193,13 +202,13 @@ with left:
 # Berekening
 # -----------------------------
 jij_ink_model = st.session_state.get("jij_ink", jij_ink)
-partner_ink_model = st.session_state.get("partner_ink", partner_ink if partner else 0.0)
+partner_ink_model = st.session_state.get("partner_ink", partner_ink if partner_checkbox else 0.0)
 
 ewf = eigenwoningforfait(woz)
 aftrek = max(0, rente - ewf)
 
-jij_res = bereken_box1(jij_ink_model, jij_aow, ewf/2 if partner else ewf, aftrek/2 if partner else aftrek)
-partner_res = bereken_box1(partner_ink_model, partner_aow, ewf/2 if partner else 0, aftrek/2 if partner else 0)
+jij_res = bereken_box1(jij_ink_model, jij_aow, ewf/2 if partner_checkbox else ewf, aftrek/2 if partner_checkbox else aftrek)
+partner_res = bereken_box1(partner_ink_model, partner_aow, ewf/2 if partner_checkbox else 0, aftrek/2 if partner_checkbox else 0)
 totaal_netto = jij_res["netto"] + partner_res["netto"]
 
 # -----------------------------
@@ -210,7 +219,7 @@ st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: {fmt_euro(totaal_netto
 with st.expander("📊 Toon berekening & details"):
     st.subheader("Jij")
     st.write({k: fmt_euro(v) for k,v in jij_res.items()})
-    if partner:
+    if partner_checkbox:
         st.subheader("Partner")
         st.write({k: fmt_euro(v) for k,v in partner_res.items()})
     st.subheader("Woning / aftrekposten")
@@ -234,10 +243,4 @@ if st.session_state["dertiemaand_checkbox"]:
 bruto_jaar = sum(bruto_maand)
 netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
 
-df_chart = pd.DataFrame({
-    "Maand": maanden,
-    "Bruto": bruto_maand,
-    "Netto": netto_maand
-}).set_index("Maand")
-
-st.bar_chart(df_chart)
+df_chart = pd.DataFrame({_
