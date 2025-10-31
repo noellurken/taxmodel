@@ -94,20 +94,20 @@ with right:
     except:
         maandloon = 0.0
 
-    # Vakantiegeld standaard op 8%
+    # 13e maand als checkbox
+    dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?")
+    dertiemaand = maandloon if dertiemaand_checkbox else 0.0
+
+    # Vakantiegeld standaard op 8%, over 12 maanden + 13e maand
     vakantiegeld_pct = st.number_input(
         "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, format="%0.0f"
     )
+    vakantiegeld = (maandloon * 12 + dertiemaand) * vakantiegeld_pct / 100
 
-    # 13e maand
-    dertiemaand = st.number_input(
-        "13e maand (€)", min_value=0.0, value=0.0, step=100.0, format="%0.0f"
-    )
-
-    vakantiegeld = maandloon * 12 * vakantiegeld_pct / 100
-    jaarloon = maandloon * 12 + vakantiegeld + dertiemaand
+    jaarloon = maandloon * 12 + dertiemaand + vakantiegeld
 
     st.write(f"**Vakantiegeld:** € {vakantiegeld:,.0f}".replace(",", "."))
+    st.write(f"**13e maand:** € {dertiemaand:,.0f}".replace(",", "."))
     st.write(f"**Brutojaarsalaris:** € {jaarloon:,.0f}".replace(",", "."))
 
     if "jij_ink" not in st.session_state:
