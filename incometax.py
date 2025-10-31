@@ -5,7 +5,7 @@ st.set_page_config(page_title="NL Netto Inkomen Calculator 2025", layout="wide")
 st.title("💶 Nederlandse Netto-Inkomen Calculator 2025")
 
 # -----------------------------
-# Functies
+# Hulpfuncties
 # -----------------------------
 def fmt_euro(val):
     """Formatteer float naar string met punten voor duizendtallen en komma voor decimalen."""
@@ -19,6 +19,7 @@ def parse_euro_input(s):
     except:
         return 0.0
 
+# Heffingskortingen
 def algemene_heffingskorting_2025(inkomen, aow):
     grens = 28406
     if not aow:
@@ -63,6 +64,7 @@ def eigenwoningforfait(woz_value: float) -> float:
         extra = (w - 1330000) * 0.0235
         return base + extra
 
+# Box1 berekening
 def bereken_box1(ink, aow, ewf, renteaftrek):
     belastbaar = max(0, ink + ewf - renteaftrek)
     if aow:
@@ -92,6 +94,7 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
         "netto": round(netto,2)
     }
 
+# Box2
 def bereken_box2(ink: float) -> dict:
     grens = 67804.0
     laag_tarief = 0.245
@@ -107,6 +110,7 @@ def bereken_box2(ink: float) -> dict:
         "netto_box2": round(netto,2)
     }
 
+# Box3
 def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     belastbaar = max(0, (spaar + beleg - schuld) - vrijstelling)
     rend_spaar = spaar * 0.0144
@@ -125,7 +129,7 @@ def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     }
 
 # -----------------------------
-# Session state
+# Session state initialisatie
 # -----------------------------
 for key in ["jij_ink","partner_ink","maandloon_raw","maandloon_float",
             "partner_checkbox","aow_jij","aow_partner"]:
@@ -161,7 +165,32 @@ st.write("✅ Geformatteerde invoer:", st.session_state.maandloon_raw)
 st.write("✅ Bruto jaarinkomen inclusief vakantiegeld:", fmt_euro(jaarinkomen))
 
 # -----------------------------
-# Hoofdmodel Box1-3 kan hier worden toegevoegd
-# Met st.session_state.jij_ink en partner_ink als input
-# Hypotheek/eigenwoningforfait, Box2, Box3, grafieken enz.
+# Hoofdmodel Box1-3 voorbeeld
 # -----------------------------
+st.header("📊 Netto-Inkomen Berekening")
+st.checkbox("Partner aanwezig?", key="partner_checkbox")
+
+st.subheader("Box 1")
+jij_box1 = bereken_box1(st.session_state.jij_ink, st.session_state.aow_jij, 0, 0)
+st.write("Jij:", {k: fmt_euro(v) for k,v in jij_box1.items()})
+if st.session_state.partner_checkbox:
+    partner_box1 = bereken_box1(st.session_state.partner_ink, st.session_state.aow_partner, 0, 0)
+    st.write("Partner:", {k: fmt_euro(v) for k,v in partner_box1.items()})
+
+st.subheader("Box 2")
+st.write("Jij Box2:", {k: fmt_euro(v) for k,v in bereken_box2(st.session_state.jij_ink).items()}.items())
+if st.session_state.partner_checkbox:
+    st.write("Partner Box2:", {k: fmt_euro(v) for k,v in bereken_box2(st.session_state.partner_ink).items()}.items())
+
+st.subheader("Box 3")
+spaar_jij = st.number_input("Spaargeld jij (€)", value=0.0)
+beleg_jij = st.number_input("Beleggingen jij (€)", value=0.0)
+schuld_jij = st.number_input("Schulden jij (€)", value=0.0)
+box3_jij = bereken_box3(spaar_jij, beleg_jij, schuld_jij)
+st.write({k: fmt_euro(v) for k,v in box3_jij.items()})
+if st.session_state.partner_checkbox:
+    spaar_partner = st.number_input("Spaargeld partner (€)", value=0.0)
+    beleg_partner = st.number_input("Beleggingen partner (€)", value=0.0)
+    schuld_partner = st.number_input("Schulden partner (€)", value=0.0)
+    box3_partner = bereken_box3(spaar_partner, beleg_partner, schuld_partner)
+    st.write({k: fmt_euro(v) for k,v in box3_partner.items()})
