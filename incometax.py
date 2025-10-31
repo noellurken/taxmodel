@@ -12,7 +12,6 @@ st.caption("Inclusief hypotheekrenteaftrek, eigenwoningforfait staffel en heffin
 # Hulpfuncties
 # -----------------------------
 def fmt_euro(amount):
-    """Formateer bedrag: punt voor duizendtallen, komma voor decimalen"""
     return f"€ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def algemene_heffingskorting_2025(inkomen, aow):
@@ -67,7 +66,6 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
         belastbaar_ewf = renteaftrek + hillen_afbouw
     else:
         belastbaar_ewf = ewf
-
     belastbaar = max(0, ink + belastbaar_ewf - renteaftrek)
     belasting = belastbaar * tarief
     ahk = algemene_heffingskorting_2025(ink, aow)
@@ -84,21 +82,47 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
     }
 
 # -----------------------------
-# Layout: columns
+# Layout columns
 # -----------------------------
 left, right = st.columns([2,1])
 
 # -----------------------------
-# Rechterkant: Salaris rekenhulp
+# Rechterkant: Salarisrekenhulp (Jij / Partner)
 # -----------------------------
 with right:
-    st.markdown("### 🧮 Salaris rekenhulp")
+    st.markdown("### 🧮 Salarisrekenhulp")
     
-    maandloon = st.number_input("Bruto maandsalaris (€)", min_value=0.0, step=0.01, value=0.0, format="%0.2f")
-    dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?")
+    gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
+    
+    # Reset waarden als gebruiker verandert
+    if "rekenhulp_gebruiker" not in st.session_state:
+        st.session_state["rekenhulp_gebruiker"] = gebruiker
+    if st.session_state["rekenhulp_gebruiker"] != gebruiker:
+        st.session_state["rekenhulp_gebruiker"] = gebruiker
+        st.session_state["maandloon"] = 0.0
+        st.session_state["dertiemaand_checkbox"] = False
+        st.session_state["vakantiegeld_pct"] = 8.0
+    
+    maandloon = st.number_input(
+        "Bruto maandsalaris (€)", 
+        min_value=0.0, 
+        step=0.01, 
+        value=st.session_state.get("maandloon",0.0),
+        format="%0.2f"
+    )
+    dertiemaand_checkbox = st.checkbox(
+        "Ontvang 13e maand?",
+        value=st.session_state.get("dertiemaand_checkbox",False)
+    )
+    vakantiegeld_pct = st.number_input(
+        "Vakantiegeld (%)",
+        min_value=0.0, max_value=20.0,
+        value=st.session_state.get("vakantiegeld_pct",8.0),
+        step=0.01, format="%0.2f"
+    )
+
+    # Berekeningen
     dertiemaand = maandloon if dertiemaand_checkbox else 0.0
-    vakantiegeld_pct = st.number_input("Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, step=0.01, format="%0.2f")
-    
     vakantiegeld = (maandloon * 12 + dertiemaand) * vakantiegeld_pct / 100
     jaarloon = maandloon * 12 + dertiemaand + vakantiegeld
 
@@ -106,24 +130,38 @@ with right:
     st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
 
-    if "jij_ink" not in st.session_state:
-        st.session_state["jij_ink"] = 0.0
-    if st.button("Gebruik dit als jaarinkomen"):
-        st.session_state["jij_ink"] = jaarloon
+    # Opslaan in session_state
+    st.session_state["maandloon"] = maandloon
+    st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
+    st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
+
+    # Button om over te nemen voor de juiste gebruiker
+    if st.button(f"Gebruik dit als jaarinkomen voor {gebruiker}"):
+        if gebruiker == "Jij":
+            st.session_state["jij_ink"] = jaarloon
+        else:
+            st.session_state["partner_ink"] = jaarloon
 
 # -----------------------------
 # Linkerkant: Jouw gegevens + Partner + Woning
 # -----------------------------
 with left:
     st.markdown("### 👤 Jouw gegevens")
-    jij_ink = st.number_input("Bruto Box-1 inkomen (€)", min_value=0.0, value=st.session_state.get("jij_ink",0.0), step=0.01, format="%0.2f")
+    jij_ink = st.number_input(
+        "Bruto Box-1 inkomen (€)", min_value=0.0,
+        value=st.session_state.get("jij_ink",0.0), step=0.01, format="%0.2f"
+    )
     jij_aow = st.checkbox("AOW-gerechtigd?")
 
     st.divider()
     partner = st.checkbox("Ik heb een fiscale partner")
     if partner:
         st.markdown("### 👥 Partner")
-        partner_ink = st.number_input("Bruto Box-1 inkomen partner (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f")
+        partner_ink = st.number_input(
+            "Bruto Box-1 inkomen partner (€)",
+            min_value=0.0,
+            value=st.session_state.get("partner_ink",0.0), step=0.01, format="%0.2f"
+        )
         partner_aow = st.checkbox("Partner AOW-gerechtigd?")
     else:
         partner_ink = 0.0
@@ -131,8 +169,12 @@ with left:
 
     st.divider()
     st.markdown("### 🏡 Eigen woning")
-    woz = st.number_input("WOZ-waarde woning (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f")
-    rente = st.number_input("Betaalde hypotheekrente per jaar (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f")
+    woz = st.number_input(
+        "WOZ-waarde woning (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f"
+    )
+    rente = st.number_input(
+        "Betaalde hypotheekrente per jaar (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f"
+    )
 
 # -----------------------------
 # Berekening
@@ -163,17 +205,18 @@ with st.expander("📊 Toon berekening & details"):
 # -----------------------------
 st.markdown("### 📈 Bruto → Netto per maand")
 maanden = [f"Maand {i}" for i in range(1,13)]
-if dertiemaand_checkbox:
+if st.session_state.get("dertiemaand_checkbox",False):
     maanden.append("13e maand")
 
-bruto_maand = [maandloon]*12
-if dertiemaand_checkbox:
-    bruto_maand.append(maandloon)
+bruto_maand = [st.session_state.get("maandloon",0.0)]*12
+if st.session_state.get("dertiemaand_checkbox",False):
+    bruto_maand.append(st.session_state.get("maandloon",0.0))
 
-bruto_jaar = maandloon*12 + dertiemaand
-netto_maand = [totaal_netto*(bm/bruto_jaar) for bm in bruto_maand]
+bruto_jaar = st.session_state.get("maandloon",0.0)*12
+if st.session_state.get("dertiemaand_checkbox",False):
+    bruto_jaar += st.session_state.get("maandloon",0.0)
+netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
 
-# DataFrame voor Streamlit native chart
 df_chart = pd.DataFrame({
     "Maand": maanden,
     "Bruto": bruto_maand,
