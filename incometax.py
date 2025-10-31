@@ -12,13 +12,10 @@ st.caption("Inclusief hypotheekrenteaftrek, eigenwoningforfait staffel en heffin
 # Hulpfuncties
 # -----------------------------
 def fmt_euro(amount):
-    """Formatteer float naar string met punten en komma"""
     return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(s):
-    """Converteer string zoals '50.000,50' naar float"""
-    s = s.replace(".", "")
-    s = s.replace(",", ".")
+    s = s.replace(".", "").replace(",", ".")
     try:
         return float(s)
     except:
@@ -103,7 +100,6 @@ with right:
     st.markdown("### 🧮 Salarisrekenhulp")
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
-    # Initialiseer session_state variabelen
     if "maandloon_display" not in st.session_state:
         st.session_state["maandloon_display"] = "0,00"
     if "dertiemaand_checkbox" not in st.session_state:
@@ -111,12 +107,11 @@ with right:
     if "vakantiegeld_pct" not in st.session_state:
         st.session_state["vakantiegeld_pct"] = 8.0
 
-    # Callback functie om direct formatteren bij typen
+    # Callback voor formatteren
     def format_salaris_input():
         val = parse_euro_input(st.session_state["maandloon_display"])
         st.session_state["maandloon_display"] = fmt_euro(val)
 
-    # Inputveld
     st.text_input(
         "Bruto maandsalaris (€)",
         st.session_state["maandloon_display"],
@@ -132,7 +127,6 @@ with right:
         step=0.01, format="%0.2f"
     )
 
-    # Berekening salaris in rekenhulp
     maandloon = parse_euro_input(st.session_state["maandloon_display"])
     dertiemaand = maandloon if dertiemaand_checkbox else 0.0
     vakantiegeld = (maandloon*12 + dertiemaand) * vakantiegeld_pct/100
@@ -142,14 +136,11 @@ with right:
     st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
 
-    # Opslaan in session_state
     st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
     st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
-    # Callback functies voor knoppen
     def gebruik_voor_jij():
         st.session_state["jij_ink"] = jaarloon
-
     def gebruik_voor_partner():
         st.session_state["partner_ink"] = jaarloon
 
@@ -205,4 +196,35 @@ st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: {fmt_euro(totaal_netto
 
 with st.expander("📊 Toon berekening & details"):
     st.subheader("Jij")
-    st.write({k: fmt_euro(v)
+    st.write({k: fmt_euro(v) for k,v in jij_res.items()})
+    if partner:
+        st.subheader("Partner")
+        st.write({k: fmt_euro(v) for k,v in partner_res.items()})
+    st.subheader("Woning / aftrekposten")
+    st.write({
+        "Eigenwoningforfait": fmt_euro(ewf),
+        "Aftrek hypotheekrente": fmt_euro(aftrek)
+    })
+
+# -----------------------------
+# Grafiek bruto → netto
+# -----------------------------
+st.markdown("### 📈 Bruto → Netto per maand")
+maanden = [f"Maand {i}" for i in range(1,13)]
+if st.session_state["dertiemaand_checkbox"]:
+    maanden.append("13e maand")
+
+bruto_maand = [maandloon]*12
+if st.session_state["dertiemaand_checkbox"]:
+    bruto_maand.append(maandloon)
+
+bruto_jaar = sum(bruto_maand)
+netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
+
+df_chart = pd.DataFrame({
+    "Maand": maanden,
+    "Bruto": bruto_maand,
+    "Netto": netto_maand
+}).set_index("Maand")
+
+st.bar_chart(df_chart)
