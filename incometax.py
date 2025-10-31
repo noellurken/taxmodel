@@ -160,4 +160,24 @@ with left:
 ewf = eigenwoningforfait(woz)
 aftrek = max(0, rente - ewf)
 
-jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if part
+jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if partner else ewf, aftrek/2 if partner else aftrek)
+partner_res = bereken_box1(partner_ink, partner_aow, ewf/2 if partner else 0, aftrek/2 if partner else 0)
+
+totaal_netto = jij_res["netto"] + partner_res["netto"]
+
+# -----------------------------
+# Output
+# -----------------------------
+st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: € {totaal_netto:,.2f}".replace(",", "."))
+
+with st.expander("📊 Toon berekening & details"):
+    st.subheader("Jij")
+    st.write({k: f"€ {v:,.2f}".replace(",", ".") for k,v in jij_res.items()})
+    if partner:
+        st.subheader("Partner")
+        st.write({k: f"€ {v:,.2f}".replace(",", ".") for k,v in partner_res.items()})
+    st.subheader("Woning / aftrekposten")
+    st.write({
+        "Eigenwoningforfait": f"€ {ewf:,.2f}".replace(",", "."),
+        "Aftrek hypotheekrente": f"€ {aftrek:,.2f}".replace(",", ".")
+    })
