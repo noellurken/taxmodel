@@ -17,14 +17,6 @@ def parse_euro_input(s):
     except:
         return 0.0
 
-def format_input(value):
-    """Formatteer automatisch punten bij duizendtallen en komma voor decimalen"""
-    try:
-        val = float(value.replace(".", "").replace(",", "."))
-        return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
-    except:
-        return value
-
 def algemene_heffingskorting_2025(inkomen, aow):
     grens = 28406
     if not aow:
@@ -138,21 +130,24 @@ if "jij_ink" not in st.session_state:
 if "partner_ink" not in st.session_state:
     st.session_state.partner_ink = 0.0
 
+# Session_state voor Rekenhulp
+for fld in ["maandloon_raw", "maandloon_float"]:
+    if fld not in st.session_state:
+        st.session_state[fld] = "0,00" if "raw" in fld else 0.0
+
 # -----------------------------
 # Sidebar: Rekenhulp
 # -----------------------------
 st.sidebar.header("💡 Rekenhulp Bruto → Jaarinkomen")
+maandloon_input = st.sidebar.text_input("Bruto maandsalaris (€)", st.session_state.maandloon_raw)
+apply_btn = st.sidebar.button("Gebruik invoer")
 
-if "maandloon_raw" not in st.session_state:
-    st.session_state.maandloon_raw = "0,00"
+if apply_btn:
+    maandloon_val = parse_euro_input(maandloon_input)
+    st.session_state.maandloon_float = maandloon_val
+    st.session_state.maandloon_raw = fmt_euro(maandloon_val)
 
-maandloon_raw = st.sidebar.text_input("Bruto maandsalaris (€)", st.session_state.maandloon_raw)
-formatted_maandloon = format_input(maandloon_raw)
-if formatted_maandloon != maandloon_raw:
-    st.session_state.maandloon_raw = formatted_maandloon
-    st.experimental_rerun()
-
-maandloon = float(formatted_maandloon.replace(".", "").replace(",", "."))
+maandloon = st.session_state.maandloon_float
 vakantiegeld_pct = st.sidebar.number_input("Vakantiegeld (%)", 8.0, step=1.0)
 dertiemaand = st.sidebar.checkbox("13e maand?", True)
 
