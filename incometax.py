@@ -70,12 +70,12 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
     heffingskortingen = min(belasting, ahk + ak)
     netto = ink - belasting + heffingskortingen
     return {
-        "belastbaar": round(belastbaar,0),
-        "belasting": round(belasting,0),
-        "algemene_korting": round(ahk,0),
-        "arbeids_korting": round(ak,0),
-        "kortingen_totaal": round(heffingskortingen,0),
-        "netto": round(netto,0)
+        "belastbaar": round(belastbaar,2),
+        "belasting": round(belasting,2),
+        "algemene_korting": round(ahk,2),
+        "arbeids_korting": round(ak,2),
+        "kortingen_totaal": round(heffingskortingen,2),
+        "netto": round(netto,2)
     }
 
 # -----------------------------
@@ -83,14 +83,16 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
 # -----------------------------
 left, right = st.columns([2,1])
 
-# -------------- Rechterkant: Salaris rekenhulp --------------
+# -----------------------------
+# Rechterkant: Salaris rekenhulp
+# -----------------------------
 with right:
     st.markdown("### 🧮 Salaris rekenhulp")
     
     # Bruto maandsalaris met punten als duizendtallen
-    maandloon_str = st.text_input("Bruto maandsalaris (€)", value="0")
+    maandloon_str = st.text_input("Bruto maandsalaris (€)", value="0.00")
     try:
-        maandloon = float(maandloon_str.replace(".", "").replace(",", ""))
+        maandloon = float(maandloon_str.replace(".", "").replace(",", "."))
     except:
         maandloon = 0.0
 
@@ -100,29 +102,31 @@ with right:
 
     # Vakantiegeld standaard op 8%, over 12 maanden + 13e maand
     vakantiegeld_pct = st.number_input(
-        "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, format="%0.0f"
+        "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, format="%0.2f", step=0.01
     )
     vakantiegeld = (maandloon * 12 + dertiemaand) * vakantiegeld_pct / 100
 
     jaarloon = maandloon * 12 + dertiemaand + vakantiegeld
 
-    st.write(f"**Vakantiegeld:** € {vakantiegeld:,.0f}".replace(",", "."))
-    st.write(f"**13e maand:** € {dertiemaand:,.0f}".replace(",", "."))
-    st.write(f"**Brutojaarsalaris:** € {jaarloon:,.0f}".replace(",", "."))
+    st.write(f"**Vakantiegeld:** € {vakantiegeld:,.2f}".replace(",", "."))
+    st.write(f"**13e maand:** € {dertiemaand:,.2f}".replace(",", "."))
+    st.write(f"**Brutojaarsalaris:** € {jaarloon:,.2f}".replace(",", "."))
 
     if "jij_ink" not in st.session_state:
         st.session_state["jij_ink"] = 0.0
     if st.button("Gebruik dit als jaarinkomen"):
         st.session_state["jij_ink"] = jaarloon
 
-# -------------- Linkerkant: Jouw gegevens + Partner + Woning --------------
+# -----------------------------
+# Linkerkant: Jouw gegevens + Partner + Woning
+# -----------------------------
 with left:
     st.markdown("### 👤 Jouw gegevens")
     jij_ink = st.number_input(
         "Bruto Box-1 inkomen (€)",
         min_value=0.0,
         value=st.session_state.get("jij_ink",0.0),
-        step=1000.0, format="%0.0f"
+        step=0.01, format="%0.2f"
     )
     jij_aow = st.checkbox("AOW-gerechtigd?")
 
@@ -132,7 +136,7 @@ with left:
         st.markdown("### 👥 Partner")
         partner_ink = st.number_input(
             "Bruto Box-1 inkomen partner (€)",
-            min_value=0.0, value=0.0, step=1000.0, format="%0.0f"
+            min_value=0.0, value=0.0, step=0.01, format="%0.2f"
         )
         partner_aow = st.checkbox("Partner AOW-gerechtigd?")
     else:
@@ -143,11 +147,11 @@ with left:
     st.markdown("### 🏡 Eigen woning")
     woz = st.number_input(
         "WOZ-waarde woning (€)",
-        min_value=0.0, value=0.0, step=5000.0, format="%0.0f"
+        min_value=0.0, value=0.0, step=0.01, format="%0.2f"
     )
     rente = st.number_input(
         "Betaalde hypotheekrente per jaar (€)",
-        min_value=0.0, value=0.0, step=500.0, format="%0.0f"
+        min_value=0.0, value=0.0, step=0.01, format="%0.2f"
     )
 
 # -----------------------------
@@ -156,24 +160,4 @@ with left:
 ewf = eigenwoningforfait(woz)
 aftrek = max(0, rente - ewf)
 
-jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if partner else ewf, aftrek/2 if partner else aftrek)
-partner_res = bereken_box1(partner_ink, partner_aow, ewf/2 if partner else 0, aftrek/2 if partner else 0)
-
-totaal_netto = jij_res["netto"] + partner_res["netto"]
-
-# -----------------------------
-# Output
-# -----------------------------
-st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: € {totaal_netto:,.0f}".replace(",", "."))
-
-with st.expander("📊 Toon berekening & details"):
-    st.subheader("Jij")
-    st.write({k: f"€ {v:,.0f}".replace(",", ".") for k,v in jij_res.items()})
-    if partner:
-        st.subheader("Partner")
-        st.write({k: f"€ {v:,.0f}".replace(",", ".") for k,v in partner_res.items()})
-    st.subheader("Woning / aftrekposten")
-    st.write({
-        "Eigenwoningforfait": f"€ {ewf:,.0f}".replace(",", "."),
-        "Aftrek hypotheekrente": f"€ {aftrek:,.0f}".replace(",", ".")
-    })
+jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if part
