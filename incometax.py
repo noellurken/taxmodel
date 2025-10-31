@@ -102,6 +102,7 @@ with right:
     st.markdown("### 🧮 Salarisrekenhulp")
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
+    # Session state initialisatie
     if "rekenhulp_gebruiker" not in st.session_state:
         st.session_state["rekenhulp_gebruiker"] = gebruiker
     if st.session_state["rekenhulp_gebruiker"] != gebruiker:
@@ -110,7 +111,9 @@ with right:
         st.session_state["dertiemaand_checkbox"] = False
         st.session_state["vakantiegeld_pct"] = 8.0
     
-    maandloon_input = st.text_input("Bruto maandsalaris (€)", st.session_state.get("maandloon_input","0,00"))
+    # Invoer met duizendtallen
+    display_maandloon = st.session_state.get("maandloon_input", "0,00")
+    maandloon_input = st.text_input("Bruto maandsalaris (€)", display_maandloon)
     maandloon = parse_euro_input(maandloon_input)
     
     dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?", value=st.session_state.get("dertiemaand_checkbox", False))
@@ -125,20 +128,21 @@ with right:
     st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
     
-    st.session_state["maandloon_input"] = maandloon_input
+    st.session_state["maandloon_input"] = fmt_euro(maandloon).replace("€ ","")
     st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
     st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
     # Callback functies voor knoppen
-    def gebruik_voor_jij():
-        st.session_state["jij_ink"] = jaarloon
-    def gebruik_voor_partner():
-        st.session_state["partner_ink"] = jaarloon
+    def gebruik_voor_jij(jaarloon_val):
+        st.session_state["jij_ink"] = jaarloon_val
+
+    def gebruik_voor_partner(jaarloon_val):
+        st.session_state["partner_ink"] = jaarloon_val
 
     if gebruiker == "Jij":
-        st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij)
+        st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij, kwargs={"jaarloon_val": jaarloon})
     else:
-        st.button("Gebruik voor je partner", on_click=gebruik_voor_partner)
+        st.button("Gebruik voor je partner", on_click=gebruik_voor_partner, kwargs={"jaarloon_val": jaarloon})
 
 # -----------------------------
 # Linkerkant: Jouw gegevens + Partner + Woning
