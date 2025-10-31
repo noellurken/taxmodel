@@ -16,8 +16,8 @@ def fmt_euro(amount):
 
 def parse_euro_input(s):
     """Converteer string zoals '50.000,50' naar float"""
-    s = s.replace(".", "")  # verwijder duizendtallen
-    s = s.replace(",", ".")  # vervang decimaal-komma door punt
+    s = s.replace(".", "")
+    s = s.replace(",", ".")
     try:
         return float(s)
     except:
@@ -100,10 +100,8 @@ left, right = st.columns([2,1])
 # -----------------------------
 with right:
     st.markdown("### 🧮 Salarisrekenhulp")
-    
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
-    # Reset bij wisselen gebruiker
     if "rekenhulp_gebruiker" not in st.session_state:
         st.session_state["rekenhulp_gebruiker"] = gebruiker
     if st.session_state["rekenhulp_gebruiker"] != gebruiker:
@@ -131,13 +129,16 @@ with right:
     st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
     st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
-    # Knoppenlabels
+    # Callback functies voor knoppen
+    def gebruik_voor_jij():
+        st.session_state["jij_ink"] = jaarloon
+    def gebruik_voor_partner():
+        st.session_state["partner_ink"] = jaarloon
+
     if gebruiker == "Jij":
-        if st.button("Gebruik voor jezelf"):
-            st.session_state["jij_ink"] = jaarloon
+        st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij)
     else:
-        if st.button("Gebruik voor je partner"):
-            st.session_state["partner_ink"] = jaarloon
+        st.button("Gebruik voor je partner", on_click=gebruik_voor_partner)
 
 # -----------------------------
 # Linkerkant: Jouw gegevens + Partner + Woning
