@@ -94,18 +94,11 @@ left, right = st.columns([2,1])
 with right:
     st.markdown("### 🧮 Salaris rekenhulp")
     
-    maandloon_str = st.text_input("Bruto maandsalaris (€)", value="0,00")
-    try:
-        maandloon = float(maandloon_str.replace(".", "").replace(",", "."))
-    except:
-        maandloon = 0.0
-
+    maandloon = st.number_input("Bruto maandsalaris (€)", min_value=0.0, step=0.01, value=0.0, format="%0.2f")
     dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?")
     dertiemaand = maandloon if dertiemaand_checkbox else 0.0
-
-    vakantiegeld_pct = st.number_input(
-        "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, format="%0.2f", step=0.01
-    )
+    vakantiegeld_pct = st.number_input("Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, step=0.01, format="%0.2f")
+    
     vakantiegeld = (maandloon * 12 + dertiemaand) * vakantiegeld_pct / 100
     jaarloon = maandloon * 12 + dertiemaand + vakantiegeld
 
@@ -123,22 +116,14 @@ with right:
 # -----------------------------
 with left:
     st.markdown("### 👤 Jouw gegevens")
-    jij_ink = st.number_input(
-        "Bruto Box-1 inkomen (€)",
-        min_value=0.0,
-        value=st.session_state.get("jij_ink",0.0),
-        step=0.01, format="%0.2f"
-    )
+    jij_ink = st.number_input("Bruto Box-1 inkomen (€)", min_value=0.0, value=st.session_state.get("jij_ink",0.0), step=0.01, format="%0.2f")
     jij_aow = st.checkbox("AOW-gerechtigd?")
 
     st.divider()
     partner = st.checkbox("Ik heb een fiscale partner")
     if partner:
         st.markdown("### 👥 Partner")
-        partner_ink = st.number_input(
-            "Bruto Box-1 inkomen partner (€)",
-            min_value=0.0, value=0.0, step=0.01, format="%0.2f"
-        )
+        partner_ink = st.number_input("Bruto Box-1 inkomen partner (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f")
         partner_aow = st.checkbox("Partner AOW-gerechtigd?")
     else:
         partner_ink = 0.0
@@ -146,14 +131,8 @@ with left:
 
     st.divider()
     st.markdown("### 🏡 Eigen woning")
-    woz = st.number_input(
-        "WOZ-waarde woning (€)",
-        min_value=0.0, value=0.0, step=0.01, format="%0.2f"
-    )
-    rente = st.number_input(
-        "Betaalde hypotheekrente per jaar (€)",
-        min_value=0.0, value=0.0, step=0.01, format="%0.2f"
-    )
+    woz = st.number_input("WOZ-waarde woning (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f")
+    rente = st.number_input("Betaalde hypotheekrente per jaar (€)", min_value=0.0, value=0.0, step=0.01, format="%0.2f")
 
 # -----------------------------
 # Berekening
@@ -163,7 +142,6 @@ aftrek = max(0, rente - ewf)
 
 jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if partner else ewf, aftrek/2 if partner else aftrek)
 partner_res = bereken_box1(partner_ink, partner_aow, ewf/2 if partner else 0, aftrek/2 if partner else 0)
-
 totaal_netto = jij_res["netto"] + partner_res["netto"]
 
 # -----------------------------
@@ -178,28 +156,20 @@ with st.expander("📊 Toon berekening & details"):
         st.subheader("Partner")
         st.write({k: fmt_euro(v) for k,v in partner_res.items()})
     st.subheader("Woning / aftrekposten")
-    st.write({
-        "Eigenwoningforfait": fmt_euro(ewf),
-        "Aftrek hypotheekrente": fmt_euro(aftrek)
-    })
+    st.write({"Eigenwoningforfait": fmt_euro(ewf), "Aftrek hypotheekrente": fmt_euro(aftrek)})
 
 # -----------------------------
 # Interactieve grafiek bruto → netto
 # -----------------------------
 st.markdown("### 📈 Bruto → Netto per maand")
-
-# Maanden 1-12 + evt 13e maand
 maanden = [f"Maand {i}" for i in range(1,13)]
 if dertiemaand_checkbox:
     maanden.append("13e maand")
 
-# Bruto per maand
 bruto_maand = [maandloon]*12
 if dertiemaand_checkbox:
     bruto_maand.append(maandloon)
 
-# Netto per maand (evenredig netto berekening)
-# Voor eenvoud: netto/jaar * (bruto maand / totaal bruto jaar)
 bruto_jaar = maandloon*12 + dertiemaand
 netto_maand = [totaal_netto*(bm/bruto_jaar) for bm in bruto_maand]
 
