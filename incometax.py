@@ -1,14 +1,11 @@
 import streamlit as st
 import pandas as pd
 
-# -----------------------------
-# Pagina instellingen
-# -----------------------------
 st.set_page_config(page_title="NL Netto Inkomen Calculator 2025", layout="wide")
 st.title("💶 Nederlandse Netto-Inkomen Calculator 2025")
 
 # -----------------------------
-# Hulpfuncties
+# Functies
 # -----------------------------
 def fmt_euro(val):
     """Formatteer float naar string met punten voor duizendtallen en komma voor decimalen."""
@@ -128,11 +125,12 @@ def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     }
 
 # -----------------------------
-# Session state initialisatie
+# Session state
 # -----------------------------
-for key in ["jij_ink","partner_ink","maandloon_raw","maandloon_float"]:
+for key in ["jij_ink","partner_ink","maandloon_raw","maandloon_float",
+            "partner_checkbox","aow_jij","aow_partner"]:
     if key not in st.session_state:
-        st.session_state[key] = 0.0 if "ink" in key or "float" in key else "0,00"
+        st.session_state[key] = 0.0 if "ink" in key or "float" in key else False
 
 # -----------------------------
 # Sidebar: Rekenhulp
@@ -163,6 +161,7 @@ st.write("✅ Geformatteerde invoer:", st.session_state.maandloon_raw)
 st.write("✅ Bruto jaarinkomen inclusief vakantiegeld:", fmt_euro(jaarinkomen))
 
 # -----------------------------
-# Hier kun je verder de hoofdapp integreren
-# Box1-3, partner, woning, hypotheek, grafieken enz.
+# Hoofdmodel Box1-3 kan hier worden toegevoegd
+# Met st.session_state.jij_ink en partner_ink als input
+# Hypotheek/eigenwoningforfait, Box2, Box3, grafieken enz.
 # -----------------------------
