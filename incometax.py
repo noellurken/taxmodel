@@ -100,6 +100,7 @@ with right:
     st.markdown("### 🧮 Salarisrekenhulp")
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
+    # Initialiseer session_state
     if "maandloon_display" not in st.session_state:
         st.session_state["maandloon_display"] = "0,00"
     if "dertiemaand_checkbox" not in st.session_state:
@@ -107,7 +108,7 @@ with right:
     if "vakantiegeld_pct" not in st.session_state:
         st.session_state["vakantiegeld_pct"] = 8.0
 
-    # Callback voor formatteren
+    # Callback voor directe formattering
     def format_salaris_input():
         val = parse_euro_input(st.session_state["maandloon_display"])
         st.session_state["maandloon_display"] = fmt_euro(val)
@@ -127,22 +128,29 @@ with right:
         step=0.01, format="%0.2f"
     )
 
+    # Bereken totaal jaarloon
     maandloon = parse_euro_input(st.session_state["maandloon_display"])
-    dertiemaand = maandloon if dertiemaand_checkbox else 0.0
-    vakantiegeld = (maandloon*12 + dertiemaand) * vakantiegeld_pct/100
-    jaarloon = maandloon*12 + dertiemaand + vakantiegeld
+    d13 = maandloon if dertiemaand_checkbox else 0.0
+    vakantiegeld = (maandloon*12 + d13) * vakantiegeld_pct/100
+    jaarloon = maandloon*12 + d13 + vakantiegeld
 
     st.write(f"**Vakantiegeld:** {fmt_euro(vakantiegeld)}")
-    st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
+    st.write(f"**13e maand:** {fmt_euro(d13)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
 
+    # Update session_state
     st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
     st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
+    # Callback functies voor knoppen
     def gebruik_voor_jij():
         st.session_state["jij_ink"] = jaarloon
+        # Update invoerveld naar maandsalaris
+        st.session_state["maandloon_display"] = fmt_euro(jaarloon/12)
+
     def gebruik_voor_partner():
         st.session_state["partner_ink"] = jaarloon
+        st.session_state["maandloon_display"] = fmt_euro(jaarloon/12)
 
     if gebruiker == "Jij":
         st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij)
@@ -214,9 +222,9 @@ maanden = [f"Maand {i}" for i in range(1,13)]
 if st.session_state["dertiemaand_checkbox"]:
     maanden.append("13e maand")
 
-bruto_maand = [maandloon]*12
+bruto_maand = [parse_euro_input(st.session_state["maandloon_display"])]*12
 if st.session_state["dertiemaand_checkbox"]:
-    bruto_maand.append(maandloon)
+    bruto_maand.append(parse_euro_input(st.session_state["maandloon_display"]))
 
 bruto_jaar = sum(bruto_maand)
 netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
