@@ -1,5 +1,5 @@
 import streamlit as st
-import plotly.graph_objects as go
+import pandas as pd
 
 # -----------------------------
 # Pagina configuratie
@@ -84,7 +84,7 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
     }
 
 # -----------------------------
-# UI: layout columns
+# Layout: columns
 # -----------------------------
 left, right = st.columns([2,1])
 
@@ -159,7 +159,7 @@ with st.expander("📊 Toon berekening & details"):
     st.write({"Eigenwoningforfait": fmt_euro(ewf), "Aftrek hypotheekrente": fmt_euro(aftrek)})
 
 # -----------------------------
-# Interactieve grafiek bruto → netto
+# Native Streamlit grafiek bruto → netto
 # -----------------------------
 st.markdown("### 📈 Bruto → Netto per maand")
 maanden = [f"Maand {i}" for i in range(1,13)]
@@ -173,14 +173,11 @@ if dertiemaand_checkbox:
 bruto_jaar = maandloon*12 + dertiemaand
 netto_maand = [totaal_netto*(bm/bruto_jaar) for bm in bruto_maand]
 
-fig = go.Figure()
-fig.add_trace(go.Bar(x=maanden, y=bruto_maand, name='Bruto (€)'))
-fig.add_trace(go.Bar(x=maanden, y=netto_maand, name='Netto (€)'))
-fig.update_layout(
-    barmode='group',
-    yaxis_title="Bedrag (€)",
-    xaxis_title="Maand",
-    yaxis_tickformat=',.2f',
-    legend=dict(x=0.8, y=1.1)
-)
-st.plotly_chart(fig, use_container_width=True)
+# DataFrame voor Streamlit native chart
+df_chart = pd.DataFrame({
+    "Maand": maanden,
+    "Bruto": bruto_maand,
+    "Netto": netto_maand
+}).set_index("Maand")
+
+st.bar_chart(df_chart)
