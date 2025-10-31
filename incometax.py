@@ -1,16 +1,21 @@
 import streamlit as st
 import pandas as pd
 
+# -----------------------------
+# Pagina instellingen
+# -----------------------------
 st.set_page_config(page_title="NL Netto Inkomen Calculator 2025", layout="wide")
 st.title("💶 Nederlandse Netto-Inkomen Calculator 2025")
 
 # -----------------------------
 # Hulpfuncties
 # -----------------------------
-def fmt_euro(amount):
-    return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+def fmt_euro(val):
+    """Formatteer float naar string met punten voor duizendtallen en komma voor decimalen."""
+    return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(s):
+    """Parse string naar float."""
     s = s.replace(".", "").replace(",", ".")
     try:
         return float(s)
@@ -123,138 +128,41 @@ def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     }
 
 # -----------------------------
-# Session state
+# Session state initialisatie
 # -----------------------------
-if "jij_ink" not in st.session_state:
-    st.session_state.jij_ink = 0.0
-if "partner_ink" not in st.session_state:
-    st.session_state.partner_ink = 0.0
-
-# Session_state voor Rekenhulp
-for fld in ["maandloon_raw", "maandloon_float"]:
-    if fld not in st.session_state:
-        st.session_state[fld] = "0,00" if "raw" in fld else 0.0
+for key in ["jij_ink","partner_ink","maandloon_raw","maandloon_float"]:
+    if key not in st.session_state:
+        st.session_state[key] = 0.0 if "ink" in key or "float" in key else "0,00"
 
 # -----------------------------
 # Sidebar: Rekenhulp
 # -----------------------------
 st.sidebar.header("💡 Rekenhulp Bruto → Jaarinkomen")
 maandloon_input = st.sidebar.text_input("Bruto maandsalaris (€)", st.session_state.maandloon_raw)
-apply_btn = st.sidebar.button("Gebruik invoer")
+vakantiegeld_pct = st.sidebar.number_input("Vakantiegeld (%)", value=8.0, step=1.0)
+dertiemaand = st.sidebar.checkbox("13e maand aanwezig?", True)
 
-if apply_btn:
+if st.sidebar.button("Toepassen / Format"):
     maandloon_val = parse_euro_input(maandloon_input)
     st.session_state.maandloon_float = maandloon_val
     st.session_state.maandloon_raw = fmt_euro(maandloon_val)
 
 maandloon = st.session_state.maandloon_float
-vakantiegeld_pct = st.sidebar.number_input("Vakantiegeld (%)", 8.0, step=1.0)
-dertiemaand = st.sidebar.checkbox("13e maand?", True)
+maandloon_effectief = maandloon * (13 if dertiemaand else 12)
+vakantiegeld = maandloon_effectief * (vakantiegeld_pct / 100)
+jaarinkomen = maandloon_effectief + vakantiegeld
 
-vakantiegeld = maandloon * (vakantiegeld_pct/100)
-jaarinkomen = maandloon*12 + vakantiegeld + (maandloon if dertiemaand else 0.0)
-st.sidebar.markdown(f"**Bruto jaarinkomen**: {fmt_euro(jaarinkomen)}")
+st.sidebar.markdown(f"**Bruto jaarinkomen incl. vakantiegeld**: {fmt_euro(jaarinkomen)}")
 
 if st.sidebar.button("Gebruik voor jezelf"):
     st.session_state.jij_ink = jaarinkomen
 if st.sidebar.button("Gebruik voor je partner"):
     st.session_state.partner_ink = jaarinkomen
 
-# -----------------------------
-# Hoofdmodel Inputs
-# -----------------------------
-st.sidebar.header("Persoonlijke gegevens")
-jij_aow = st.sidebar.checkbox("AOW bereikt - Jij?", False)
-partner_checkbox = st.sidebar.checkbox("Partner aanwezig?", False)
-partner_aow = st.sidebar.checkbox("AOW bereikt - Partner?", False) if partner_checkbox else False
-
-st.sidebar.header("Eigen woning")
-woz_value = parse_euro_input(st.sidebar.text_input("WOZ-waarde (€)", "0,00"))
-hypotheek_rente = parse_euro_input(st.sidebar.text_input("Betaalde hypotheekrente (€)", "0,00"))
-
-st.sidebar.header("Box 2 & 3")
-bezit_ab = st.sidebar.checkbox("Bezit je ≥5% aandelen (Box 2)?")
-box2_jij = parse_euro_input(st.sidebar.text_input("Box 2 inkomen - Jij (€)", "0,00")) if bezit_ab else 0.0
-box2_partner = parse_euro_input(st.sidebar.text_input("Box 2 inkomen - Partner (€)", "0,00")) if (bezit_ab and partner_checkbox) else 0.0
-
-bezittingen = st.sidebar.checkbox("Bezit je vermogen (Box 3)?")
-spaar_jij = parse_euro_input(st.sidebar.text_input("Spaargeld - Jij (€)", "0,00")) if bezittingen else 0.0
-beleg_jij = parse_euro_input(st.sidebar.text_input("Beleggingen - Jij (€)", "0,00")) if bezittingen else 0.0
-schuld_jij = parse_euro_input(st.sidebar.text_input("Schulden - Jij (€)", "0,00")) if bezittingen else 0.0
-
-spaar_partner = parse_euro_input(st.sidebar.text_input("Spaargeld - Partner (€)", "0,00")) if (bezittingen and partner_checkbox) else 0.0
-beleg_partner = parse_euro_input(st.sidebar.text_input("Beleggingen - Partner (€)", "0,00")) if (bezittingen and partner_checkbox) else 0.0
-schuld_partner = parse_euro_input(st.sidebar.text_input("Schulden - Partner (€)", "0,00")) if (bezittingen and partner_checkbox) else 0.0
+st.write("✅ Geformatteerde invoer:", st.session_state.maandloon_raw)
+st.write("✅ Bruto jaarinkomen inclusief vakantiegeld:", fmt_euro(jaarinkomen))
 
 # -----------------------------
-# Berekeningen
+# Hier kun je verder de hoofdapp integreren
+# Box1-3, partner, woning, hypotheek, grafieken enz.
 # -----------------------------
-ewf = eigenwoningforfait(woz_value)
-aftrek = max(0, hypotheek_rente - ewf)
-
-jij_res = bereken_box1(st.session_state.jij_ink, jij_aow, ewf/2 if partner_checkbox else ewf, aftrek/2 if partner_checkbox else aftrek)
-partner_res = bereken_box1(st.session_state.partner_ink, partner_aow, ewf/2 if partner_checkbox else 0, aftrek/2 if partner_checkbox else 0)
-
-box2_jij_res = bereken_box2(box2_jij)
-box2_partner_res = bereken_box2(box2_partner) if partner_checkbox else {"netto_box2":0.0}
-
-box3_jij_res = bereken_box3(spaar_jij, beleg_jij, schuld_jij)
-box3_partner_res = bereken_box3(spaar_partner, beleg_partner, schuld_partner) if partner_checkbox else {"netto_box3":0.0}
-
-totaal_netto = (
-    jij_res["netto"] + partner_res["netto"] +
-    box2_jij_res["netto_box2"] + box2_partner_res["netto_box2"] +
-    box3_jij_res["netto_box3"] + box3_partner_res["netto_box3"]
-)
-
-# -----------------------------
-# Output & Grafieken
-# -----------------------------
-st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: {fmt_euro(totaal_netto)}")
-
-with st.expander("📊 Toon berekening & details"):
-    st.subheader("Jij")
-    st.write({k: fmt_euro(v) for k,v in jij_res.items()})
-    if bezit_ab: st.subheader("Box 2 - Jij"); st.write({k: fmt_euro(v) for k,v in box2_jij_res.items()})
-    if bezittingen:
-        st.subheader("Box 3 - Jij")
-        st.write({
-            "Spaargeld belasting": fmt_euro(box3_jij_res["belasting_spaar"]),
-            "Beleggingen belasting": fmt_euro(box3_jij_res["belasting_beleg"]),
-            "Schulden voordeel": fmt_euro(box3_jij_res["belasting_schuld"]),
-            "Totaal Box3": fmt_euro(box3_jij_res["netto_box3"])
-        })
-    if partner_checkbox:
-        st.subheader("Partner")
-        st.write({k: fmt_euro(v) for k,v in partner_res.items()})
-        if bezit_ab: st.subheader("Box 2 - Partner"); st.write({k: fmt_euro(v) for k,v in box2_partner_res.items()})
-        if bezittingen:
-            st.subheader("Box 3 - Partner")
-            st.write({
-                "Spaargeld belasting": fmt_euro(box3_partner_res["belasting_spaar"]),
-                "Beleggingen belasting": fmt_euro(box3_partner_res["belasting_beleg"]),
-                "Schulden voordeel": fmt_euro(box3_partner_res["belasting_schuld"]),
-                "Totaal Box3": fmt_euro(box3_partner_res["netto_box3"])
-            })
-
-# Grafieken
-st.markdown("### 📊 Bruto → Netto per maand (Box 1) & Box 3 heffing per bestanddeel")
-maanden = [f"Maand {i}" for i in range(1,13)]
-bruto_maand = [st.session_state.jij_ink/12]*12
-netto_maand = [jij_res["netto"]/12]*12
-col1, col2 = st.columns(2)
-with col1:
-    st.subheader("Box 1: Bruto → Netto per maand")
-    df_box1 = pd.DataFrame({"Maand": maanden, "Bruto": bruto_maand, "Netto": netto_maand}).set_index("Maand")
-    st.bar_chart(df_box1)
-with col2:
-    st.subheader("Box 3: Heffing per bestanddeel")
-    box3_components = pd.DataFrame({
-        "Component": ["Spaargeld", "Beleggingen", "Schulden"],
-        "Belasting": [
-            box3_jij_res["belasting_spaar"],
-            box3_jij_res["belasting_beleg"],
-            box3_jij_res["belasting_schuld"]
-        ]
-    })
-    st.bar_chart(box3_components.set_index("Component"))
