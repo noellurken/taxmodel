@@ -101,12 +101,11 @@ with right:
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
     # Initialiseer session_state
+    for key in ["maandloon_display", "dertiemaand_checkbox", "vakantiegeld_pct"]:
+        if key not in st.session_state:
+            st.session_state[key] = "0,00" if "maandloon" in key else 0.0
     if "maandloon_display" not in st.session_state:
         st.session_state["maandloon_display"] = "0,00"
-    if "dertiemaand_checkbox" not in st.session_state:
-        st.session_state["dertiemaand_checkbox"] = False
-    if "vakantiegeld_pct" not in st.session_state:
-        st.session_state["vakantiegeld_pct"] = 8.0
 
     # Callback voor directe formattering
     def format_salaris_input():
@@ -128,7 +127,6 @@ with right:
         step=0.01, format="%0.2f"
     )
 
-    # Bereken totaal jaarloon
     maandloon = parse_euro_input(st.session_state["maandloon_display"])
     d13 = maandloon if dertiemaand_checkbox else 0.0
     vakantiegeld = (maandloon*12 + d13) * vakantiegeld_pct/100
@@ -138,19 +136,14 @@ with right:
     st.write(f"**13e maand:** {fmt_euro(d13)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
 
-    # Update session_state
-    st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
-    st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
-
     # Callback functies voor knoppen
     def gebruik_voor_jij():
         st.session_state["jij_ink"] = jaarloon
-        # Update invoerveld naar maandsalaris
-        st.session_state["maandloon_display"] = fmt_euro(jaarloon/12)
+        st.session_state["jij_ink_input"] = fmt_euro(jaarloon)
 
     def gebruik_voor_partner():
         st.session_state["partner_ink"] = jaarloon
-        st.session_state["maandloon_display"] = fmt_euro(jaarloon/12)
+        st.session_state["partner_ink_input"] = fmt_euro(jaarloon)
 
     if gebruiker == "Jij":
         st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij)
@@ -162,7 +155,11 @@ with right:
 # -----------------------------
 with left:
     st.markdown("### 👤 Jouw gegevens")
-    jij_ink_input = st.text_input("Bruto Box-1 inkomen (€)", "0,00")
+    jij_ink_input = st.text_input(
+        "Bruto Box-1 inkomen (€)",
+        key="jij_ink_input",
+        value=st.session_state.get("jij_ink_input","0,00")
+    )
     jij_ink = parse_euro_input(jij_ink_input)
     jij_aow = st.checkbox("AOW-gerechtigd?")
 
@@ -170,7 +167,11 @@ with left:
     partner = st.checkbox("Ik heb een fiscale partner")
     if partner:
         st.markdown("### 👥 Partner")
-        partner_ink_input = st.text_input("Bruto Box-1 inkomen partner (€)", "0,00")
+        partner_ink_input = st.text_input(
+            "Bruto Box-1 inkomen partner (€)",
+            key="partner_ink_input",
+            value=st.session_state.get("partner_ink_input","0,00")
+        )
         partner_ink = parse_euro_input(partner_ink_input)
         partner_aow = st.checkbox("Partner AOW-gerechtigd?")
     else:
