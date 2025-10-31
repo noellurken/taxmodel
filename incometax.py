@@ -1,4 +1,5 @@
 import streamlit as st
+import plotly.graph_objects as go
 
 # -----------------------------
 # Pagina configuratie
@@ -8,8 +9,12 @@ st.title("💶 Nederlandse Netto-Inkomen Calculator 2025")
 st.caption("Inclusief hypotheekrenteaftrek, eigenwoningforfait staffel en heffingskortingen 2025")
 
 # -----------------------------
-# Functies
+# Hulpfuncties
 # -----------------------------
+def fmt_euro(amount):
+    """Formateer bedrag: punt voor duizendtallen, komma voor decimalen"""
+    return f"€ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+
 def algemene_heffingskorting_2025(inkomen, aow):
     grens = 28406
     if not aow:
@@ -89,28 +94,24 @@ left, right = st.columns([2,1])
 with right:
     st.markdown("### 🧮 Salaris rekenhulp")
     
-    # Bruto maandsalaris met punten als duizendtallen
-    maandloon_str = st.text_input("Bruto maandsalaris (€)", value="0.00")
+    maandloon_str = st.text_input("Bruto maandsalaris (€)", value="0,00")
     try:
         maandloon = float(maandloon_str.replace(".", "").replace(",", "."))
     except:
         maandloon = 0.0
 
-    # 13e maand als checkbox
     dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?")
     dertiemaand = maandloon if dertiemaand_checkbox else 0.0
 
-    # Vakantiegeld standaard op 8%, over 12 maanden + 13e maand
     vakantiegeld_pct = st.number_input(
         "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, format="%0.2f", step=0.01
     )
     vakantiegeld = (maandloon * 12 + dertiemaand) * vakantiegeld_pct / 100
-
     jaarloon = maandloon * 12 + dertiemaand + vakantiegeld
 
-    st.write(f"**Vakantiegeld:** € {vakantiegeld:,.2f}".replace(",", "."))
-    st.write(f"**13e maand:** € {dertiemaand:,.2f}".replace(",", "."))
-    st.write(f"**Brutojaarsalaris:** € {jaarloon:,.2f}".replace(",", "."))
+    st.write(f"**Vakantiegeld:** {fmt_euro(vakantiegeld)}")
+    st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
+    st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
 
     if "jij_ink" not in st.session_state:
         st.session_state["jij_ink"] = 0.0
@@ -168,16 +169,48 @@ totaal_netto = jij_res["netto"] + partner_res["netto"]
 # -----------------------------
 # Output
 # -----------------------------
-st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: € {totaal_netto:,.2f}".replace(",", "."))
+st.success(f"📌 **Gezamenlijk netto-inkomen per jaar**: {fmt_euro(totaal_netto)}")
 
 with st.expander("📊 Toon berekening & details"):
     st.subheader("Jij")
-    st.write({k: f"€ {v:,.2f}".replace(",", ".") for k,v in jij_res.items()})
+    st.write({k: fmt_euro(v) for k,v in jij_res.items()})
     if partner:
         st.subheader("Partner")
-        st.write({k: f"€ {v:,.2f}".replace(",", ".") for k,v in partner_res.items()})
+        st.write({k: fmt_euro(v) for k,v in partner_res.items()})
     st.subheader("Woning / aftrekposten")
     st.write({
-        "Eigenwoningforfait": f"€ {ewf:,.2f}".replace(",", "."),
-        "Aftrek hypotheekrente": f"€ {aftrek:,.2f}".replace(",", ".")
+        "Eigenwoningforfait": fmt_euro(ewf),
+        "Aftrek hypotheekrente": fmt_euro(aftrek)
     })
+
+# -----------------------------
+# Interactieve grafiek bruto → netto
+# -----------------------------
+st.markdown("### 📈 Bruto → Netto per maand")
+
+# Maanden 1-12 + evt 13e maand
+maanden = [f"Maand {i}" for i in range(1,13)]
+if dertiemaand_checkbox:
+    maanden.append("13e maand")
+
+# Bruto per maand
+bruto_maand = [maandloon]*12
+if dertiemaand_checkbox:
+    bruto_maand.append(maandloon)
+
+# Netto per maand (evenredig netto berekening)
+# Voor eenvoud: netto/jaar * (bruto maand / totaal bruto jaar)
+bruto_jaar = maandloon*12 + dertiemaand
+netto_maand = [totaal_netto*(bm/bruto_jaar) for bm in bruto_maand]
+
+fig = go.Figure()
+fig.add_trace(go.Bar(x=maanden, y=bruto_maand, name='Bruto (€)'))
+fig.add_trace(go.Bar(x=maanden, y=netto_maand, name='Netto (€)'))
+fig.update_layout(
+    barmode='group',
+    yaxis_title="Bedrag (€)",
+    xaxis_title="Maand",
+    yaxis_tickformat=',.2f',
+    legend=dict(x=0.8, y=1.1)
+)
+st.plotly_chart(fig, use_container_width=True)
