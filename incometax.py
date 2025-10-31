@@ -195,4 +195,30 @@ with st.expander("📊 Toon berekening & details"):
         st.subheader("Partner")
         st.write({k: fmt_euro(v) for k,v in partner_res.items()})
     st.subheader("Woning / aftrekposten")
-    st.write({"Eigenwoningforfait": fmt_euro
+    st.write({
+        "Eigenwoningforfait": fmt_euro(ewf),
+        "Aftrek hypotheekrente": fmt_euro(aftrek)
+    })
+
+# -----------------------------
+# Grafiek bruto → netto
+# -----------------------------
+st.markdown("### 📈 Bruto → Netto per maand")
+maanden = [f"Maand {i}" for i in range(1,13)]
+if st.session_state["dertiemaand_checkbox"]:
+    maanden.append("13e maand")
+
+bruto_maand = [maandloon]*12
+if st.session_state["dertiemaand_checkbox"]:
+    bruto_maand.append(maandloon)
+
+bruto_jaar = sum(bruto_maand)
+netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
+
+df_chart = pd.DataFrame({
+    "Maand": maanden,
+    "Bruto": bruto_maand,
+    "Netto": netto_maand
+}).set_index("Maand")
+
+st.bar_chart(df_chart)
