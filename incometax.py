@@ -13,7 +13,7 @@ st.caption("Inclusief hypotheekrenteaftrek, eigenwoningforfait staffel en heffin
 # -----------------------------
 def fmt_euro(amount):
     """Formatteer float naar string met punten en komma"""
-    return f"€ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    return f"{amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(s):
     """Converteer string zoals '50.000,50' naar float"""
@@ -114,7 +114,7 @@ with right:
     # Toon input met punten tussen duizendtallen
     maandloon_input = st.text_input("Bruto maandsalaris (€)", st.session_state["maandloon_display"])
     maandloon = parse_euro_input(maandloon_input)
-    st.session_state["maandloon_display"] = fmt_euro(maandloon).replace("€ ","")
+    st.session_state["maandloon_display"] = fmt_euro(maandloon)
     
     dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?", value=st.session_state["dertiemaand_checkbox"])
     vakantiegeld_pct = st.number_input("Vakantiegeld (%)", min_value=0.0, max_value=20.0,
@@ -173,7 +173,6 @@ with left:
 # -----------------------------
 # Berekening
 # -----------------------------
-# Als gebruiker de rekenhulp heeft gebruikt, neem dat inkomen over
 jij_ink_model = st.session_state.get("jij_ink", jij_ink)
 partner_ink_model = st.session_state.get("partner_ink", partner_ink if partner else 0.0)
 
@@ -196,27 +195,4 @@ with st.expander("📊 Toon berekening & details"):
         st.subheader("Partner")
         st.write({k: fmt_euro(v) for k,v in partner_res.items()})
     st.subheader("Woning / aftrekposten")
-    st.write({"Eigenwoningforfait": fmt_euro(ewf), "Aftrek hypotheekrente": fmt_euro(aftrek)})
-
-# -----------------------------
-# Grafiek bruto → netto
-# -----------------------------
-st.markdown("### 📈 Bruto → Netto per maand")
-maanden = [f"Maand {i}" for i in range(1,13)]
-if st.session_state["dertiemaand_checkbox"]:
-    maanden.append("13e maand")
-
-bruto_maand = [maandloon]*12
-if st.session_state["dertiemaand_checkbox"]:
-    bruto_maand.append(maandloon)
-
-bruto_jaar = sum(bruto_maand)
-netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
-
-df_chart = pd.DataFrame({
-    "Maand": maanden,
-    "Bruto": bruto_maand,
-    "Netto": netto_maand
-}).set_index("Maand")
-
-st.bar_chart(df_chart)
+    st.write({"Eigenwoningforfait": fmt_euro
