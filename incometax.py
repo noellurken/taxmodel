@@ -12,6 +12,7 @@ st.caption("Inclusief hypotheekrenteaftrek, eigenwoningforfait staffel en heffin
 # Hulpfuncties
 # -----------------------------
 def fmt_euro(amount):
+    """Formatteer float naar string met punten en komma"""
     return f"€ {amount:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
 
 def parse_euro_input(s):
@@ -102,23 +103,22 @@ with right:
     st.markdown("### 🧮 Salarisrekenhulp")
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
-    # Session state initialisatie
-    if "rekenhulp_gebruiker" not in st.session_state:
-        st.session_state["rekenhulp_gebruiker"] = gebruiker
-    if st.session_state["rekenhulp_gebruiker"] != gebruiker:
-        st.session_state["rekenhulp_gebruiker"] = gebruiker
-        st.session_state["maandloon_input"] = "0,00"
+    # Initialiseer session_state variabelen
+    if "maandloon_display" not in st.session_state:
+        st.session_state["maandloon_display"] = "0,00"
+    if "dertiemaand_checkbox" not in st.session_state:
         st.session_state["dertiemaand_checkbox"] = False
+    if "vakantiegeld_pct" not in st.session_state:
         st.session_state["vakantiegeld_pct"] = 8.0
     
-    # Invoer met duizendtallen
-    display_maandloon = st.session_state.get("maandloon_input", "0,00")
-    maandloon_input = st.text_input("Bruto maandsalaris (€)", display_maandloon)
+    # Toon input met punten tussen duizendtallen
+    maandloon_input = st.text_input("Bruto maandsalaris (€)", st.session_state["maandloon_display"])
     maandloon = parse_euro_input(maandloon_input)
+    st.session_state["maandloon_display"] = fmt_euro(maandloon).replace("€ ","")
     
-    dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?", value=st.session_state.get("dertiemaand_checkbox", False))
+    dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?", value=st.session_state["dertiemaand_checkbox"])
     vakantiegeld_pct = st.number_input("Vakantiegeld (%)", min_value=0.0, max_value=20.0,
-                                       value=st.session_state.get("vakantiegeld_pct",8.0), step=0.01, format="%0.2f")
+                                       value=st.session_state["vakantiegeld_pct"], step=0.01, format="%0.2f")
     
     dertiemaand = maandloon if dertiemaand_checkbox else 0.0
     vakantiegeld = (maandloon*12 + dertiemaand) * vakantiegeld_pct/100
@@ -128,7 +128,6 @@ with right:
     st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
     
-    st.session_state["maandloon_input"] = fmt_euro(maandloon).replace("€ ","")
     st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
     st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
@@ -174,11 +173,15 @@ with left:
 # -----------------------------
 # Berekening
 # -----------------------------
+# Als gebruiker de rekenhulp heeft gebruikt, neem dat inkomen over
+jij_ink_model = st.session_state.get("jij_ink", jij_ink)
+partner_ink_model = st.session_state.get("partner_ink", partner_ink if partner else 0.0)
+
 ewf = eigenwoningforfait(woz)
 aftrek = max(0, rente - ewf)
 
-jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if partner else ewf, aftrek/2 if partner else aftrek)
-partner_res = bereken_box1(partner_ink, partner_aow, ewf/2 if partner else 0, aftrek/2 if partner else 0)
+jij_res = bereken_box1(jij_ink_model, jij_aow, ewf/2 if partner else ewf, aftrek/2 if partner else aftrek)
+partner_res = bereken_box1(partner_ink_model, partner_aow, ewf/2 if partner else 0, aftrek/2 if partner else 0)
 totaal_netto = jij_res["netto"] + partner_res["netto"]
 
 # -----------------------------
@@ -200,11 +203,11 @@ with st.expander("📊 Toon berekening & details"):
 # -----------------------------
 st.markdown("### 📈 Bruto → Netto per maand")
 maanden = [f"Maand {i}" for i in range(1,13)]
-if dertiemaand_checkbox:
+if st.session_state["dertiemaand_checkbox"]:
     maanden.append("13e maand")
 
 bruto_maand = [maandloon]*12
-if dertiemaand_checkbox:
+if st.session_state["dertiemaand_checkbox"]:
     bruto_maand.append(maandloon)
 
 bruto_jaar = sum(bruto_maand)
