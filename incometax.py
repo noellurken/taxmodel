@@ -243,4 +243,10 @@ if st.session_state["dertiemaand_checkbox"]:
 bruto_jaar = sum(bruto_maand)
 netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
 
-df_chart = pd.DataFrame({_
+df_chart = pd.DataFrame({
+    "Maand": maanden,
+    "Bruto": bruto_maand,
+    "Netto": netto_maand
+}).set_index("Maand")
+
+st.bar_chart(df_chart)
