@@ -1,6 +1,6 @@
 import streamlit as st
 
-st.title("BUA-berekening tool")
+st.title("BUA-berekening")
 
 st.markdown("""
 Deze app berekent de BUA-btw-correctie voor kantine en overige verstrekkingen.
