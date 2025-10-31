@@ -101,11 +101,12 @@ with right:
     gebruiker = st.radio("Voor wie wil je het salaris invoeren?", ["Jij", "Partner"])
     
     # Initialiseer session_state
-    for key in ["maandloon_display", "dertiemaand_checkbox", "vakantiegeld_pct"]:
-        if key not in st.session_state:
-            st.session_state[key] = "0,00" if "maandloon" in key else 0.0
     if "maandloon_display" not in st.session_state:
         st.session_state["maandloon_display"] = "0,00"
+    if "dertiemaand_checkbox" not in st.session_state:
+        st.session_state["dertiemaand_checkbox"] = False
+    if "vakantiegeld_pct" not in st.session_state:
+        st.session_state["vakantiegeld_pct"] = 8.0
 
     # Callback voor directe formattering
     def format_salaris_input():
@@ -135,6 +136,9 @@ with right:
     st.write(f"**Vakantiegeld:** {fmt_euro(vakantiegeld)}")
     st.write(f"**13e maand:** {fmt_euro(d13)}")
     st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
+
+    st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
+    st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
     # Callback functies voor knoppen
     def gebruik_voor_jij():
