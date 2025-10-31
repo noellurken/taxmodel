@@ -1,35 +1,53 @@
 import streamlit as st
 
-def main():
-    st.title("BUA‑berekening tool")
+st.title("BUA-berekening tool")
 
-    st.header("Selecteer categorieën")
-    categorie_auto = st.checkbox("Auto van de zaak")
-    categorie_kantine = st.checkbox("Kantineregeling")
-    categorie_relatie = st.checkbox("Relatiegeschenken / overige personeelsvoorzieningen")
+st.markdown("""
+Deze app berekent de BUA-btw-correctie voor kantine, personeelsvoorzieningen en relatiegeschenken.
+De correctie wordt alleen toegepast als de totale kosten per begunstigde de drempel van €227 overschrijden.
+""")
 
-    if categorie_auto:
-        st.subheader("Auto van de zaak")
-        cataloguswaarde = st.number_input("Cataloguswaarde auto (incl. btw en BPM)", min_value=0.0, step=100.0)
-        eigen_bijdrage = st.number_input("Eigen bijdrage werknemer", min_value=0.0, step=100.0)
-        # etc …
+# Definieer groepen
+st.header("Definieer groepen werknemers")
+groepen = []
+aantal_groepen = st.number_input("Aantal groepen werknemers", min_value=1, step=1)
 
-    if categorie_kantine:
-        st.subheader("Kantineregeling")
-        inkoop_spijzen = st.number_input("Inkoop spijzen & dranken excl. btw", min_value=0.0, step=100.0)
-        omzet_personeel = st.number_input("Werkelijke omzet personeel incl. btw", min_value=0.0, step=100.0)
-        aantal_werknemers = st.number_input("Aantal werknemers", min_value=1, step=1)
-        # etc …
+for i in range(aantal_groepen):
+    st.subheader(f"Groep {i+1}")
+    naam = st.text_input(f"Naam groep {i+1}", value=f"Groep {i+1}")
+    
+    # Kosten per categorie
+    kantine = st.number_input(f"Kost kantine (excl. btw) voor {naam}", min_value=0.0, step=10.0)
+    personeelsvoorziening = st.number_input(f"Kost personeelsvoorzieningen (excl. btw) voor {naam}", min_value=0.0, step=10.0)
+    relatiegeschenken = st.number_input(f"Kost relatiegeschenken (excl. btw) voor {naam}", min_value=0.0, step=10.0)
+    
+    begunstigden = st.number_input(f"Aantal begunstigden in {naam}", min_value=1, step=1)
+    
+    groepen.append({
+        "naam": naam,
+        "kantine": kantine,
+        "personeelsvoorziening": personeelsvoorziening,
+        "relatiegeschenken": relatiegeschenken,
+        "begunstigden": begunstigden
+    })
 
-    if categorie_relatie:
-        st.subheader("Relatiegeschenken / overige")
-        totale_kosten_excl_btw = st.number_input("Totale aanschaf-/voortbrengingskosten excl. btw", min_value=0.0, step=100.0)
-        aantal_begunstigden = st.number_input("Aantal begunstigden", min_value=1, step=1)
-        # etc …
-
-    if st.button("Bereken"):
-        # hier logica om te berekenen
-        st.write("Hier komt het berekeningsresultaat …")
-
-if __name__ == "__main__":
-    main()
+# Berekening
+if st.button("Bereken BUA-correctie"):
+    drempel = 227.0
+    btw_tarief = 0.21  # standaard 21%, kan worden aangepast
+    totaal_correctie = 0.0
+    
+    st.header("Resultaten per groep")
+    for g in groepen:
+        totaal_kosten = g["kantine"] + g["personeelsvoorziening"] + g["relatiegeschenken"]
+        overschrijding = max(totaal_kosten - drempel * g["begunstigden"], 0)
+        correctie = overschrijding * btw_tarief
+        totaal_correctie += correctie
+        
+        st.write(f"**{g['naam']}**")
+        st.write(f"Totale kosten excl. btw: €{totaal_kosten:.2f}")
+        st.write(f"Drempel overschreden: €{overschrijding:.2f}")
+        st.write(f"Te corrigeren btw: €{correctie:.2f}")
+        st.write("---")
+    
+    st.subheader(f"Totaal BUA-btw-correctie: €{totaal_correctie:.2f}")
