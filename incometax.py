@@ -17,7 +17,14 @@ def parse_euro_input(s):
     except:
         return 0.0
 
-# --- Box 1 ---
+def format_input(value):
+    """Formatteer automatisch punten bij duizendtallen en komma voor decimalen"""
+    try:
+        val = float(value.replace(".", "").replace(",", "."))
+        return f"{val:,.2f}".replace(",", "X").replace(".", ",").replace("X", ".")
+    except:
+        return value
+
 def algemene_heffingskorting_2025(inkomen, aow):
     grens = 28406
     if not aow:
@@ -91,7 +98,6 @@ def bereken_box1(ink, aow, ewf, renteaftrek):
         "netto": round(netto,2)
     }
 
-# --- Box 2 ---
 def bereken_box2(ink: float) -> dict:
     grens = 67804.0
     laag_tarief = 0.245
@@ -107,7 +113,6 @@ def bereken_box2(ink: float) -> dict:
         "netto_box2": round(netto,2)
     }
 
-# --- Box 3 ---
 def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     belastbaar = max(0, (spaar + beleg - schuld) - vrijstelling)
     rend_spaar = spaar * 0.0144
@@ -126,26 +131,42 @@ def bereken_box3(spaar, beleg, schuld, vrijstelling=57684.0):
     }
 
 # -----------------------------
-# Rekenhulp: brutomaand + vakantiegeld + 13e maand
+# Session state
+# -----------------------------
+if "jij_ink" not in st.session_state:
+    st.session_state.jij_ink = 0.0
+if "partner_ink" not in st.session_state:
+    st.session_state.partner_ink = 0.0
+
+# -----------------------------
+# Sidebar: Rekenhulp
 # -----------------------------
 st.sidebar.header("💡 Rekenhulp Bruto → Jaarinkomen")
-maandloon_input = st.sidebar.text_input("Bruto maandsalaris (€)", "0,00")
+
+if "maandloon_raw" not in st.session_state:
+    st.session_state.maandloon_raw = "0,00"
+
+maandloon_raw = st.sidebar.text_input("Bruto maandsalaris (€)", st.session_state.maandloon_raw)
+formatted_maandloon = format_input(maandloon_raw)
+if formatted_maandloon != maandloon_raw:
+    st.session_state.maandloon_raw = formatted_maandloon
+    st.experimental_rerun()
+
+maandloon = float(formatted_maandloon.replace(".", "").replace(",", "."))
 vakantiegeld_pct = st.sidebar.number_input("Vakantiegeld (%)", 8.0, step=1.0)
 dertiemaand = st.sidebar.checkbox("13e maand?", True)
 
-maandloon = parse_euro_input(maandloon_input)
 vakantiegeld = maandloon * (vakantiegeld_pct/100)
 jaarinkomen = maandloon*12 + vakantiegeld + (maandloon if dertiemaand else 0.0)
 st.sidebar.markdown(f"**Bruto jaarinkomen**: {fmt_euro(jaarinkomen)}")
 
-# Knoppen om jaarinkomen in hoofdmodel te zetten
 if st.sidebar.button("Gebruik voor jezelf"):
-    jij_ink = jaarinkomen
-if st.sidebar.button("Gebruik voor je partner") and st.sidebar.checkbox("Partner aanwezig?", False):
-    partner_ink = jaarinkomen
+    st.session_state.jij_ink = jaarinkomen
+if st.sidebar.button("Gebruik voor je partner"):
+    st.session_state.partner_ink = jaarinkomen
 
 # -----------------------------
-# Inputs hoofdmodel
+# Hoofdmodel Inputs
 # -----------------------------
 st.sidebar.header("Persoonlijke gegevens")
 jij_aow = st.sidebar.checkbox("AOW bereikt - Jij?", False)
@@ -176,8 +197,8 @@ schuld_partner = parse_euro_input(st.sidebar.text_input("Schulden - Partner (€
 ewf = eigenwoningforfait(woz_value)
 aftrek = max(0, hypotheek_rente - ewf)
 
-jij_res = bereken_box1(jij_ink, jij_aow, ewf/2 if partner_checkbox else ewf, aftrek/2 if partner_checkbox else aftrek)
-partner_res = bereken_box1(partner_ink, partner_aow, ewf/2 if partner_checkbox else 0, aftrek/2 if partner_checkbox else 0)
+jij_res = bereken_box1(st.session_state.jij_ink, jij_aow, ewf/2 if partner_checkbox else ewf, aftrek/2 if partner_checkbox else aftrek)
+partner_res = bereken_box1(st.session_state.partner_ink, partner_aow, ewf/2 if partner_checkbox else 0, aftrek/2 if partner_checkbox else 0)
 
 box2_jij_res = bereken_box2(box2_jij)
 box2_partner_res = bereken_box2(box2_partner) if partner_checkbox else {"netto_box2":0.0}
@@ -221,9 +242,10 @@ with st.expander("📊 Toon berekening & details"):
                 "Totaal Box3": fmt_euro(box3_partner_res["netto_box3"])
             })
 
+# Grafieken
 st.markdown("### 📊 Bruto → Netto per maand (Box 1) & Box 3 heffing per bestanddeel")
 maanden = [f"Maand {i}" for i in range(1,13)]
-bruto_maand = [jij_ink/12]*12
+bruto_maand = [st.session_state.jij_ink/12]*12
 netto_maand = [jij_res["netto"]/12]*12
 col1, col2 = st.columns(2)
 with col1:
