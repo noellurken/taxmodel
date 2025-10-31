@@ -86,14 +86,27 @@ left, right = st.columns([2,1])
 # -------------- Rechterkant: Salaris rekenhulp --------------
 with right:
     st.markdown("### 🧮 Salaris rekenhulp")
-    maandloon = st.number_input(
-        "Bruto maandsalaris (€)", min_value=0.0, value=0.0, step=100.0, format="%0.0f"
-    )
+    
+    # Bruto maandsalaris met punten als duizendtallen
+    maandloon_str = st.text_input("Bruto maandsalaris (€)", value="0")
+    try:
+        maandloon = float(maandloon_str.replace(".", "").replace(",", ""))
+    except:
+        maandloon = 0.0
+
+    # Vakantiegeld standaard op 8%
     vakantiegeld_pct = st.number_input(
-        "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=0.0, format="%0.0f"
+        "Vakantiegeld (%)", min_value=0.0, max_value=20.0, value=8.0, format="%0.0f"
     )
+
+    # 13e maand
+    dertiemaand = st.number_input(
+        "13e maand (€)", min_value=0.0, value=0.0, step=100.0, format="%0.0f"
+    )
+
     vakantiegeld = maandloon * 12 * vakantiegeld_pct / 100
-    jaarloon = maandloon * 12 + vakantiegeld
+    jaarloon = maandloon * 12 + vakantiegeld + dertiemaand
+
     st.write(f"**Vakantiegeld:** € {vakantiegeld:,.0f}".replace(",", "."))
     st.write(f"**Brutojaarsalaris:** € {jaarloon:,.0f}".replace(",", "."))
 
