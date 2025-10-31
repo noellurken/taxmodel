@@ -114,7 +114,6 @@ with right:
     # Toon input met punten tussen duizendtallen
     maandloon_input = st.text_input("Bruto maandsalaris (€)", st.session_state["maandloon_display"])
     maandloon = parse_euro_input(maandloon_input)
-    st.session_state["maandloon_display"] = fmt_euro(maandloon)
     
     dertiemaand_checkbox = st.checkbox("Ontvang 13e maand?", value=st.session_state["dertiemaand_checkbox"])
     vakantiegeld_pct = st.number_input("Vakantiegeld (%)", min_value=0.0, max_value=20.0,
@@ -124,24 +123,34 @@ with right:
     vakantiegeld = (maandloon*12 + dertiemaand) * vakantiegeld_pct/100
     jaarloon = maandloon*12 + dertiemaand + vakantiegeld
     
-    st.write(f"**Vakantiegeld:** {fmt_euro(vakantiegeld)}")
-    st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
-    st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
-    
+    # Update display string
+    st.session_state["maandloon_display"] = fmt_euro(maandloon)
     st.session_state["dertiemaand_checkbox"] = dertiemaand_checkbox
     st.session_state["vakantiegeld_pct"] = vakantiegeld_pct
 
-    # Callback functies voor knoppen
-    def gebruik_voor_jij(jaarloon_val):
-        st.session_state["jij_ink"] = jaarloon_val
+    st.write(f"**Vakantiegeld:** {fmt_euro(vakantiegeld)}")
+    st.write(f"**13e maand:** {fmt_euro(dertiemaand)}")
+    st.write(f"**Brutojaarsalaris:** {fmt_euro(jaarloon)}")
 
-    def gebruik_voor_partner(jaarloon_val):
-        st.session_state["partner_ink"] = jaarloon_val
+    # Callback functies voor knoppen
+    def gebruik_voor_jij():
+        val = parse_euro_input(st.session_state["maandloon_display"])
+        d13 = val if st.session_state["dertiemaand_checkbox"] else 0.0
+        vakgeld = (val*12 + d13) * st.session_state["vakantiegeld_pct"]/100
+        totaal = val*12 + d13 + vakgeld
+        st.session_state["jij_ink"] = totaal
+
+    def gebruik_voor_partner():
+        val = parse_euro_input(st.session_state["maandloon_display"])
+        d13 = val if st.session_state["dertiemaand_checkbox"] else 0.0
+        vakgeld = (val*12 + d13) * st.session_state["vakantiegeld_pct"]/100
+        totaal = val*12 + d13 + vakgeld
+        st.session_state["partner_ink"] = totaal
 
     if gebruiker == "Jij":
-        st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij, kwargs={"jaarloon_val": jaarloon})
+        st.button("Gebruik voor jezelf", on_click=gebruik_voor_jij)
     else:
-        st.button("Gebruik voor je partner", on_click=gebruik_voor_partner, kwargs={"jaarloon_val": jaarloon})
+        st.button("Gebruik voor je partner", on_click=gebruik_voor_partner)
 
 # -----------------------------
 # Linkerkant: Jouw gegevens + Partner + Woning
@@ -208,9 +217,9 @@ maanden = [f"Maand {i}" for i in range(1,13)]
 if st.session_state["dertiemaand_checkbox"]:
     maanden.append("13e maand")
 
-bruto_maand = [maandloon]*12
+bruto_maand = [parse_euro_input(st.session_state["maandloon_display"])]*12
 if st.session_state["dertiemaand_checkbox"]:
-    bruto_maand.append(maandloon)
+    bruto_maand.append(parse_euro_input(st.session_state["maandloon_display"]))
 
 bruto_jaar = sum(bruto_maand)
 netto_maand = [totaal_netto*(bm/bruto_jaar) if bruto_jaar>0 else 0 for bm in bruto_maand]
